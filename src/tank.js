@@ -1,20 +1,62 @@
 // Tank rig + behavior. Convention: hull local forward = +Z, up = +Y.
 // Hull yaw θ → world forward (sinθ, 0, cosθ); mesh.rotation.y = θ.
 import * as THREE from 'three';
-import { terrainHeight, resolveObstacles } from './world.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { terrainHeight } from './world.js';
 
 export const TANK_RADIUS = 1.7;
+export const TANK_MODELS = {
+  tank_1: 'models/tank_1.glb',
+  tank_2: 'models/tank_2_sherman.glb',
+  tank_3: 'models/tank_3.glb',
+  tank_4: 'models/tank_4.glb',
+};
+
+const loader = new GLTFLoader();
+
+const _tmpV = new THREE.Vector3();
+
+export async function loadTankModels() {
+  const entries = await Promise.all(Object.entries(TANK_MODELS).map(async ([key, url]) => {
+    const gltf = await new Promise((res, rej) => loader.load(url, res, undefined, rej));
+    return [key, gltf];
+  }));
+  return Object.fromEntries(entries); // {tank_1: gltf, ...}
+}
+
+function fixSkeletons(clone, source) {
+  clone.traverse(o => {
+    if (o.isSkinnedMesh) {
+      const src = source && source.getObjectByName && source.getObjectByName(o.name);
+      if (!src || !src.skeleton) return;
+      const bones = src.skeleton.bones.map(b => clone.getObjectByName(b.name));
+      if (bones.some(b => !b)) return;
+      o.skeleton = new THREE.Skeleton(bones, src.skeleton.boneInverses.slice());
+    }
+  });
+}
+
+function cloneMaterials(root) {
+  root.traverse(o => {
+    if (o.isMesh && o.material) {
+      o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone();
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+  return root;
+}
 
 export class Tank {
-  constructor({ color = 0x4a6b3a, x, z, heading, isPlayer = false, scene }) {
+  constructor({ modelKey = 'tank_2', x, z, heading, isPlayer = false, scene, models }) {
     this.isPlayer = isPlayer;
     this.maxHp = 100;
     this.hp = this.maxHp;
     this.pos = new THREE.Vector3(x, 0, z);
-    this.heading = heading;           // hull yaw
+    this.heading = heading;
     this.speed = 0;
-    this.turretLocalYaw = 0;          // relative to hull
-    this.barrelPitch = 0.12;          // radians up
+    this.turretLocalYaw = 0;
+    this.barrelPitch = 0.12;
     this.alive = true;
     this.reload = 0;
     this.reloadTime = isPlayer ? 0.9 : 1.8;
@@ -23,80 +65,162 @@ export class Tank {
     this.aiState = { moveDir: 1, repickTimer: 0 };
     this.wreckTilt = 0;
 
-    const body = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color, flatShading: true });
-    const dark = new THREE.MeshLambertMaterial({ color: 0x2c2f26, flatShading: true });
-    const accent = new THREE.MeshLambertMaterial({ color: isPlayer ? 0x2e6e4e : 0x7a3324, flatShading: true });
+    const gltf = models[modelKey];
+    this.modelKey = modelKey;
+    // Strip the existing root transform baseline: clone + clone materials
+    this.model = cloneMaterials(gltf.scene.clone(true));
+    fixSkeletons(this.model, gltf.scene);
 
-    // treads
-    const treadGeo = new THREE.BoxGeometry(0.62, 0.62, 2.9);
-    for (const side of [-1, 1]) {
-      const t = new THREE.Mesh(treadGeo, dark);
-      t.position.set(side * 0.95, 0.32, 0);
-      t.castShadow = true;
-      body.add(t);
+    // wrapper inside hullGroup (outer, positioned/rotated by setPose)
+    this.group = new THREE.Group();            // outer hullGroup
+    const wrapper = new THREE.Group();          // scaled + grounded
+    wrapper.rotation.y = Math.PI / 2;            // model forward (-X) -> +Z
+    this.group.add(wrapper);
+    wrapper.add(this.model);
+
+    // find nodes
+    const findByName = (name) => {
+      let found = null;
+      this.model.traverse(o => { if (!found && o.name === name) found = o; });
+      return found;
+    };
+    const turretNode = findByName('Tank_Turret');
+    const gunNode = findByName('Tank_Gun');
+
+    // normalize size/grounding
+    wrapper.scale.setScalar(1);
+    wrapper.updateWorldMatrix(true, true);
+    // measure using only geometry bounding boxes (stable, no skeleton/now matrixWorld bugs)
+    // force-compute bounding boxes first (fresh clones may not have them yet)
+    wrapper.traverse(o => {
+      if (o.isMesh && o.geometry) o.geometry.computeBoundingBox();
+    });
+    const _tmp = new THREE.Vector3();
+    const rawBbox = new THREE.Box3();
+    wrapper.traverse(o => {
+      if (o.isMesh && o.geometry && o.geometry.boundingBox) {
+        const bb = o.geometry.boundingBox;
+        for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
+          _tmp.set(x, y, z).applyMatrix4(o.matrixWorld);
+          rawBbox.expandByPoint(_tmp);
+        }
+      }
+    });
+    const size = rawBbox.getSize(new THREE.Vector3());
+    const targetFootprint = 2.6;
+    const s = targetFootprint / Math.max(size.x, size.z);
+    wrapper.scale.setScalar(s);
+    // grounding from the manually measured bbox (scaled) — avoid Box3.setFromObject,
+    // which returns wrong min.y for cloned/skinned rigs
+    wrapper.position.y = -rawBbox.min.y * s;
+    wrapper.updateWorldMatrix(true, true);
+
+    // turret rig: reparent turret+gun under a turretGroup at turret pivot
+    this.turretGroup = new THREE.Group();
+    wrapper.add(this.turretGroup);
+    if (turretNode && gunNode) {
+      // pivot = turret node world position (wrapper-local at this moment)
+      const pivot = new THREE.Vector3();
+      turretNode.getWorldPosition(pivot);
+      // convert to wrapper-local coordinates
+      wrapper.worldToLocal(pivot);
+      this.turretGroup.position.copy(pivot);
+      this.turretGroup.attach(turretNode);
+      this.turretGroup.attach(gunNode);
+    } else {
+      this.turretGroup = null;
     }
-    // hull (front distinct: sloped nose toward +Z)
-    const hullGeo = new THREE.BoxGeometry(1.7, 0.62, 2.7);
-    const hull = new THREE.Mesh(hullGeo, mat);
-    hull.position.y = 0.86;
-    hull.castShadow = true;
-    body.add(hull);
-    const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 1.05, 0.7, 4, 1), mat);
-    nose.rotation.x = Math.PI / 2;
-    nose.rotation.y = Math.PI / 4;
-    nose.scale.set(1, 1, 0.45);
-    nose.position.set(0, 0.86, 1.55);
-    nose.castShadow = true;
-    body.add(nose);
 
-    // turret pivot
-    this.turret = new THREE.Group();
-    this.turret.position.set(0, 1.32, -0.15);
-    body.add(this.turret);
-    const turretMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.72, 0.5, 8), accent);
-    turretMesh.castShadow = true;
-    this.turret.add(turretMesh);
+    // muzzle tip: far end of gun's long axis, farthest from turret pivot
+    this.muzzle = new THREE.Object3D();
+    if (gunNode) {
+      const gBbox = new THREE.Box3().setFromObject(gunNode);
+      const gSize = gBbox.getSize(new THREE.Vector3());
+      // choose long axis in gun local space
+      const axes = [['x', gSize.x], ['y', gSize.y], ['z', gSize.z]].sort((a, b) => b[1] - a[1]);
+      const longAxis = axes[0][0];
+      const pivotLocal = gunNode.worldToLocal(this.turretGroup ? this.turretGroup.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3());
+      // tip = end of long axis farther from pivot
+      const lo = gBbox.min[longAxis], hi = gBbox.max[longAxis];
+      const pivotCoord = longAxis === 'x' ? pivotLocal.x : longAxis === 'y' ? pivotLocal.y : pivotLocal.z;
+      const tipWorld = new THREE.Vector3();
+      tipWorld.set(gBbox.min.x, gBbox.min.y, gBbox.min.z);
+      // set long-axis coord to the far end
+      const end = Math.abs(hi - pivotCoord) > Math.abs(lo - pivotCoord) ? hi : lo;
+      // other coords: center of the bbox
+      tipWorld.x = longAxis === 'x' ? end : (gBbox.min.x + gBbox.max.x) / 2;
+      tipWorld.y = longAxis === 'y' ? end : (gBbox.min.y + gBbox.max.y) / 2;
+      tipWorld.z = longAxis === 'z' ? end : (gBbox.min.z + gBbox.max.z) / 2;
+      gunNode.updateWorldMatrix(true, false);
+      gunNode.add(this.muzzle);
+      this.muzzle.position.copy(gunNode.worldToLocal(tipWorld.clone()));
+    }
+    // fallback: if gun not found, attach to group
+    if (!gunNode) {
+      this.muzzle.position.set(0, 1.4, 2.0);
+      this.group.add(this.muzzle);
+    }
 
-    // barrel pitch pivot
-    this.barrelPivot = new THREE.Group();
-    this.barrelPivot.position.set(0, 0.18, 0);
-    this.turret.add(this.barrelPivot);
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 1.9, 8), dark);
-    barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0, 1.15);
-    barrel.castShadow = true;
-    this.barrelPivot.add(barrel);
-    const muzzleTip = new THREE.Object3D();
-    muzzleTip.position.set(0, 0, 2.15);
-    this.barrelPivot.add(muzzleTip);
-    this.muzzle = muzzleTip;
-
-    // muzzle flash (hidden)
+    // muzzle flash (hidden) as child of muzzle — scale it so it renders ~0.5 units regardless of model scale
+    // note: gBbox/gSize were computed BEFORE this block; guard for the no-gun fallback where gunNode is null
     const flash = new THREE.Mesh(
       new THREE.ConeGeometry(0.32, 1.0, 6),
       new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.95 })
     );
+    // compute the world scale of the muzzle so the cone renders the right size in world units
+    this.muzzle.updateWorldMatrix(true, false);
+    const flashWorldScale = this.muzzle.getWorldScale(new THREE.Vector3()).x || 1;
+    flash.scale.setScalar(1 / Math.max(flashWorldScale, 1e-6));
     flash.rotation.x = Math.PI / 2;
-    flash.position.set(0, 0, 2.5);
     flash.visible = false;
-    this.barrelPivot.add(flash);
+    this.muzzle.add(flash);
     this.flashMesh = flash;
 
-    this.group = body;
-    this.body = body;
-    this.accentMat = accent;
-    this.bodyMat = mat;
-    this.darkMat = dark;
+    // animation mixer (tracks/body only)
+    this.mixer = new THREE.AnimationMixer(this.model);
+    this.clips = {};
+    for (const clip of gltf.animations || []) {
+      const suffix = clip.name.split('|').pop();
+      if (/^Tank_(Forward|Backwards|TurningLeft|TurningRight)$/.test(suffix)) {
+        this.clips[suffix] = this.mixer.clipAction(clip);
+        this.clips[suffix].enabled = true;
+        this.clips[suffix].setEffectiveTimeScale(1);
+      }
+    }
+    this.activeClip = null;
+
+    // materials (for wreck tint)
+    this.materials = [];
+    this.group.traverse(o => {
+      if (o.isMesh && o.material && o !== this.flashMesh) {
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material])) {
+          if (!this.materials.includes(m)) this.materials.push(m);
+        }
+      }
+    });
+    this.baseColors = this.materials.map(m => m.color ? m.color.clone() : null);
+
+    this.animatedNodes = [];
+    this.model.traverse(o => { if (o.isMesh) o.userData._animated = true; });
+
     scene.add(this.group);
   }
 
-  setPose() {
+  setMotion(target) {
+    const map = { forward: 'Tank_Forward', backwards: 'Tank_Backwards', left: 'Tank_TurningLeft', right: 'Tank_TurningRight' };
+    const name = map[target] || null;
+    const next = name ? this.clips[name] : null;
+    if (this.activeClip === next) return;
+    if (this.activeClip) this.activeClip.fadeOut(0.18);
+    if (next) { next.reset().play(); next.fadeIn(0.18); }
+    this.activeClip = next;
+  }
+
+  setPose(dt, motion) {
     const gy = terrainHeight(this.pos.x, this.pos.z);
     this.pos.y = gy;
     this.group.position.set(this.pos.x, gy, this.pos.z);
     this.group.rotation.y = this.heading;
-    // pitch/roll from terrain gradient
     const e = 1.4;
     const hF = terrainHeight(this.pos.x + Math.sin(this.heading) * e, this.pos.z + Math.cos(this.heading) * e);
     const hB = terrainHeight(this.pos.x - Math.sin(this.heading) * e, this.pos.z - Math.cos(this.heading) * e);
@@ -104,27 +228,28 @@ export class Tank {
     const hR = terrainHeight(this.pos.x - Math.cos(this.heading) * e, this.pos.z + Math.sin(this.heading) * e);
     this.group.rotation.x = Math.atan2(hF - hB, 2 * e) * 0.8;
     this.group.rotation.z = Math.atan2(hR - hL, 2 * e) * 0.8 + this.wreckTilt;
-    this.turret.rotation.y = this.turretLocalYaw;
-    this.barrelPivot.rotation.x = -this.barrelPitch;
-    // front-distinct: keep nose blue-ish marker on front? (nose mesh already front)
+    if (this.turretGroup) {
+      this.turretGroup.rotation.y = this.turretLocalYaw;
+      this.turretGroup.rotation.x = -this.barrelPitch; // subtle pitch roll on turret
+    }
+    // drive clip + mixer
+    this.setMotion(motion);
+    if (dt !== undefined) this.mixer.update(dt);
   }
 
   worldForward() { return new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)); }
 
   barrelWorldDir() {
     const v = new THREE.Vector3(Math.sin(this.heading + this.turretLocalYaw) * Math.cos(this.barrelPitch),
-                                Math.sin(this.barrelPitch),
-                                Math.cos(this.heading + this.turretLocalYaw) * Math.cos(this.barrelPitch));
+                               Math.sin(this.barrelPitch),
+                               Math.cos(this.heading + this.turretLocalYaw) * Math.cos(this.barrelPitch));
     return v.normalize();
   }
 
-  muzzleWorldPos(out) {
-    return this.muzzle.getWorldPosition(out);
-  }
+  muzzleWorldPos(out) { return this.muzzle.getWorldPosition(out); }
 
   dispose() {
     this.group.traverse(o => {
-      if (o.geometry) o.geometry.dispose();
       if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); }
     });
     if (this.group.parent) this.group.parent.remove(this.group);
@@ -136,10 +261,8 @@ export class Tank {
     if (this.hp <= 0) {
       this.hp = 0; this.alive = false;
       this.speed = 0;
-      this.accentMat.color.set(0x1c1c1c);
-      this.bodyMat.color.set(0x22201c);
-      this.wreckTilt = 0.22; // wreck tilt
+      for (const m of this.materials) { if (m.color) m.color.set(0x1c1c1c); }
+      this.wreckTilt = 0.22;
     }
   }
 }
-

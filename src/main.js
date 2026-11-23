@@ -1,7 +1,7 @@
 // Iron Valley — startup, match state, input, camera, AI, HUD, game loop.
 import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
-import { Tank } from './tank.js';
+import { Tank, loadTankModels } from './tank.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
 
 // ---------- tunables ----------
@@ -49,7 +49,8 @@ scene.add(sun);
 buildWorld(scene);
 
 // ---------- state ----------
-let state = 'menu';           // menu | playing | victory | defeat
+let models = null;            // {tank_1: gltf, ...} loaded before match start
+let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
 let aimYaw = SPAWN_HEADING, aimPitch = 0.12;
 let startTime = 0, frameId = null, lastTime = 0;
@@ -57,7 +58,7 @@ const keys = new Set();
 const clockStart = performance.now();
 
 function makePlayer() {
-  return new Tank({ color: 0x4a6b3a, x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING, isPlayer: true, scene });
+  return new Tank({ modelKey: 'tank_2', x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING, isPlayer: true, scene, models });
 }
 
 function makeEnemies() {
@@ -67,8 +68,9 @@ function makeEnemies() {
     { x: -26, z: 8, heading: Math.PI / 2 },
     { x: 26, z: 12, heading: -Math.PI / 2 },
   ];
+  const enemyModels = ['tank_1', 'tank_3', 'tank_4', 'tank_1'];
   return spots.slice(0, TUNING.enemyCount).map((s, i) =>
-    new Tank({ color: 0x7a3324, x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene })
+    new Tank({ modelKey: enemyModels[i % enemyModels.length], x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
   );
 }
 
@@ -188,7 +190,7 @@ function updateCues() {
   else boreReticle.style.display = 'none';
 
   // predicted impact
-  const pred = predictPath({ muzzle: _muzzle, dir, tanks: [player, ...enemies.filter(e => e.alive)] });
+  const pred = predictPath({ muzzle: _muzzle, dir, tanks: enemies.filter(e => e.alive) });
   // ensure owner (player) not counted as hit for the player's own aim — filter
   if (pred && pred.hitTank !== player) {
     const ip = projectToScreen(pred.point);
@@ -218,7 +220,9 @@ function updateEnemy(e, dt) {
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
   const maxTurn = TUNING.enemy.steerRate * dt;
-  e.heading += THREE.MathUtils.clamp(diff, -maxTurn, maxTurn);
+  const applied = THREE.MathUtils.clamp(diff, -maxTurn, maxTurn);
+  e.headingDelta = Math.abs(applied) > 0.001 ? Math.sign(applied) : 0;
+  e.heading += applied;
   const wantSpeed = e.aiState.shouldApproach ? TUNING.enemy.speed : TUNING.enemy.speed * 0.6;
   const aligned = Math.abs(diff) < 0.9;
   e.speed += ((aligned ? wantSpeed : 0.5) - e.speed) * Math.min(1, dt * 3);
@@ -245,6 +249,14 @@ function updateEnemy(e, dt) {
   }
 }
 
+function motionFor(speed, headingDelta) {
+  const steer = headingDelta !== undefined ? headingDelta : 0;
+  if (Math.abs(speed) > 0.3 && Math.abs(steer) > 0.01) return steer > 0 ? 'left' : 'right';
+  if (speed > 0.3) return 'forward';
+  if (speed < -0.3) return 'backwards';
+  return null;
+}
+
 // ---------- main loop ----------
 function update(dt) {
   if (state !== 'playing') return;
@@ -254,6 +266,7 @@ function update(dt) {
     const steer = (keys.has('KeyA') ? 1 : 0) - (keys.has('KeyD') ? 1 : 0);
     // A = left = increasing heading (verified). D = right.
     const steerRate = (player.speed >= 0 ? TUNING.player.steerRate : TUNING.player.steerRate * 0.7);
+    player.headingDelta = steer;
     player.heading += steer * steerRate * dt;
 
     const forward = keys.has('KeyW') ? 1 : 0;
@@ -306,8 +319,8 @@ function update(dt) {
   }
 
   // tank poses
-  player.setPose();
-  for (const e of enemies) e.setPose();
+  player.setPose(dt, motionFor(player.speed, player.headingDelta || 0));
+  for (const e of enemies) e.setPose(dt, motionFor(e.speed, e.headingDelta || 0));
 
   // camera
   updateCamera();
@@ -358,7 +371,7 @@ function endMatch(victory) {
 function loop(t) {
   frameId = requestAnimationFrame(loop);
 
-window.__iv = { get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
   if (!lastTime) lastTime = t;
   const dt = Math.min(0.05, (t - lastTime) / 1000);
   lastTime = t;
@@ -377,11 +390,24 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// initial state: menu, world visible
-resetMatch();
-state = 'menu';
-menuOverlay.classList.remove('hidden');
-endOverlay.classList.add('hidden');
-frameId = requestAnimationFrame(loop);
+// initial state: loading models then menu
+const menuTitle = document.querySelector('#menu-overlay h1, #menu-overlay .title');
+if (menuTitle) menuTitle.textContent = 'LOADING…';
+async function init() {
+  try {
+    models = await loadTankModels();
+  } catch (err) {
+    console.error('Failed to load tank models', err);
+    if (menuTitle) menuTitle.textContent = 'MODEL LOAD FAILED — see console';
+    return;
+  }
+  resetMatch();
+  state = 'menu';
+  if (menuTitle) menuTitle.textContent = 'IRON VALLEY';
+  menuOverlay.classList.remove('hidden');
+  endOverlay.classList.add('hidden');
+  frameId = requestAnimationFrame(loop);
+}
+init();
 
-window.__iv = { get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
