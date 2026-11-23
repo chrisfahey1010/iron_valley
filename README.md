@@ -11,7 +11,7 @@ npm run build    # production build into dist/
 npm run preview  # serve the production build
 ```
 
-Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets).
+Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3).
 
 ## Controls
 
@@ -22,7 +22,7 @@ Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is f
 | Mouse | Aim turret & camera (pointer lock) |
 | Left click | Fire |
 | R | Restart match |
-| Esc | Release pointer lock; click canvas to re-capture |
+| Esc | Pause menu — music volume slider, resume, restart |
 
 Start screen: click **START MISSION**. The start click captures the mouse and does not fire.
 

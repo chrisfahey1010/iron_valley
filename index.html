@@ -20,7 +20,7 @@
         <div id="reload-label">RELOAD</div>
         <div id="reload-bar-outer"><div id="reload-bar"></div></div>
       </div>
-      <div id="controls-hint">W/S drive &nbsp; A/D steer &nbsp; Mouse aim &nbsp; LMB fire &nbsp; R restart</div>
+      <div id="controls-hint">W/S drive &nbsp; A/D steer &nbsp; Mouse aim &nbsp; LMB fire &nbsp; R restart &nbsp; Esc pause</div>
       <div id="bore-reticle" class="cue"></div>
       <div id="impact-marker" class="cue"></div>
     </div>
@@ -36,6 +36,18 @@
         </div>
         <button id="start-btn">START MISSION</button>
         <p class="small">Clicking start captures the mouse. Press <b>Esc</b> to release it, click again to re-capture.</p>
+      </div>
+    </div>
+    <div id="pause-overlay" class="overlay hidden">
+      <div class="panel">
+        <h1>PAUSED</h1>
+        <div class="volume-row">
+          <label for="volume-slider">MUSIC VOLUME</label>
+          <input id="volume-slider" type="range" min="0" max="100" value="70" />
+          <span id="volume-value">70%</span>
+        </div>
+        <button id="resume-btn">RESUME</button>
+        <p class="small">Esc — resume &nbsp; R — restart</p>
       </div>
     </div>
     <div id="end-overlay" class="overlay hidden">

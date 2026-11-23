@@ -23,6 +23,46 @@ const menuOverlay = $('menu-overlay');
 const endOverlay = $('end-overlay');
 const boreReticle = $('bore-reticle');
 const impactMarker = $('impact-marker');
+const pauseOverlay = $('pause-overlay');
+
+// ---------- music / pause ----------
+const music = new Audio('/audio/combat-theme.mp3');
+music.loop = true;
+music.volume = Math.min(1, Math.max(0, parseFloat(localStorage.getItem('iv-music-volume') ?? '0.7') || 0));
+let paused = false;
+
+function setVolume(v01) {
+  music.volume = v01;
+  localStorage.setItem('iv-music-volume', String(v01));
+  const pct = Math.round(v01 * 100);
+  $('volume-slider').value = String(pct);
+  $('volume-value').textContent = pct + '%';
+}
+function openPause() {
+  if (state !== 'playing' || paused) return;
+  paused = true;
+  pauseOverlay.classList.remove('hidden');
+  setVolume(music.volume);
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closePause() {
+  paused = false;
+  pauseOverlay.classList.add('hidden');
+}
+$('volume-slider').addEventListener('input', e => setVolume(e.target.value / 100));
+$('resume-btn').addEventListener('click', () => {
+  closePause();
+  safeRequestPointerLock();
+});
+window.addEventListener('keydown', e => {
+  if (e.code === 'Escape') {
+    if (paused) { closePause(); safeRequestPointerLock(); }
+    else openPause();
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  if (!document.pointerLockElement && state === 'playing' && !paused) openPause();
+});
 
 // ---------- renderer / scene ----------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -92,6 +132,7 @@ function resetMatch() {
   }
   player.alive = true;
   state = 'playing';
+  closePause();
   endOverlay.classList.add('hidden');
   menuOverlay.classList.add('hidden');
   startTime = performance.now();
@@ -132,10 +173,12 @@ document.addEventListener('mousemove', e => {
 $('start-btn').addEventListener('click', () => {
   resetMatch();
   safeRequestPointerLock();
+  music.play().catch(() => { /* autoplay blocked */ });
 });
 $('restart-btn').addEventListener('click', () => {
   resetMatch();
   safeRequestPointerLock();
+  music.play().catch(() => {});
 });
 
 // ---------- firing ----------
@@ -375,7 +418,7 @@ window.__iv = { get camera(){return camera}, get scene(){return scene}, get camY
   if (!lastTime) lastTime = t;
   const dt = Math.min(0.05, (t - lastTime) / 1000);
   lastTime = t;
-  if (state === 'playing') {
+  if (state === 'playing' && !paused) {
     update(dt);
   }
   renderer.render(scene, camera);
