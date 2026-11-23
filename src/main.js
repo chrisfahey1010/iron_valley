@@ -130,6 +130,13 @@ $('restart-btn').addEventListener('click', () => {
 });
 
 // ---------- firing ----------
+function tickMuzzleFlash(tank, dt) {
+  if (tank.muzzleFlash > 0) {
+    tank.muzzleFlash -= dt;
+    if (tank.muzzleFlash <= 0) tank.flashMesh.visible = false;
+  }
+}
+
 const _muzzle = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 
@@ -272,14 +279,11 @@ function update(dt) {
     player.turretLocalYaw = aimYaw - player.heading;
     player.barrelPitch = aimPitch;
     player.reload = Math.max(0, player.reload - dt);
-    if (player.muzzleFlash > 0) {
-      player.muzzleFlash -= dt;
-      if (player.muzzleFlash <= 0) player.flashMesh.visible = false;
-    }
+    tickMuzzleFlash(player, dt);
   }
 
   // enemies
-  for (const e of enemies) updateEnemy(e, dt);
+  for (const e of enemies) { updateEnemy(e, dt); tickMuzzleFlash(e, dt); }
 
   // shells
   for (let i = shells.length - 1; i >= 0; i--) {
