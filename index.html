@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Iron Valley</title>
+<link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud">
+      <div id="hud-top">
+        <div id="objective">Objective: destroy all enemy armor</div>
+        <div id="enemies-left">Enemies left: <span id="enemies-left-count">0</span></div>
+      </div>
+      <div id="health-panel">
+        <div id="health-label">HULL</div>
+        <div id="health-bar-outer"><div id="health-bar"></div></div>
+        <div id="reload-label">RELOAD</div>
+        <div id="reload-bar-outer"><div id="reload-bar"></div></div>
+      </div>
+      <div id="controls-hint">W/S drive &nbsp; A/D steer &nbsp; Mouse aim &nbsp; LMB fire &nbsp; R restart</div>
+      <div id="bore-reticle" class="cue"></div>
+      <div id="impact-marker" class="cue"></div>
+    </div>
+    <div id="menu-overlay" class="overlay">
+      <div class="panel">
+        <h1>IRON VALLEY</h1>
+        <p>Destroy all enemy armor in the valley.</p>
+        <div class="controls-list">
+          <div><b>W / S</b> drive forward / reverse</div>
+          <div><b>A / D</b> steer hull left / right</div>
+          <div><b>Mouse</b> aim turret &amp; camera</div>
+          <div><b>Left click</b> fire &nbsp; <b>R</b> restart</div>
+        </div>
+        <button id="start-btn">START MISSION</button>
+        <p class="small">Clicking start captures the mouse. Press <b>Esc</b> to release it, click again to re-capture.</p>
+      </div>
+    </div>
+    <div id="end-overlay" class="overlay hidden">
+      <div class="panel">
+        <h1 id="end-title">VICTORY</h1>
+        <p id="end-subtitle">All enemy armor destroyed.</p>
+        <button id="restart-btn">RESTART</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
