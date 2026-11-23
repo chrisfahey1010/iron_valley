@@ -1,5 +1,6 @@
 // World: low-poly valley terrain, obstacles (rocks, ruins), scenery.
 import * as THREE from 'three';
+import { ASSETS } from './scale.js';
 
 export const WORLD_SIZE = 120;          // terrain plane size
 export const ARENA_RADIUS = 52;         // drivable boundary
@@ -82,9 +83,8 @@ export function buildWorld(scene) {
     }
   }
 
-  // Scattered low-poly trees outside the arena
-  const treeTrunk = new THREE.CylinderGeometry(0.18, 0.28, 1.1, 5);
-  const treeTop = new THREE.ConeGeometry(1.0, 2.2, 6);
+  // Scattered low-poly trees outside the arena (world-scale: total height ~10m)
+  const TREE_HEIGHT = ASSETS.tree.heightM; // meters
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a4230, flatShading: true });
   const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f5230, flatShading: true });
   for (let i = 0; i < 42; i++) {
@@ -92,12 +92,19 @@ export function buildWorld(scene) {
     const rad = ARENA_RADIUS + 6 + Math.random() * 14;
     const x = Math.cos(ang) * rad, z = Math.sin(ang) * rad;
     const base = terrainHeight(x, z);
-    const trunk = new THREE.Mesh(treeTrunk, trunkMat);
-    trunk.position.set(x, base + 0.55, z);
-    const top = new THREE.Mesh(treeTop, leafMat);
-    top.position.set(x, base + 2.1, z);
-    top.scale.setScalar(0.8 + Math.random() * 0.9);
+    const h = TREE_HEIGHT * (0.85 + Math.random() * 0.3); // variance in real meters
+    const trunkH = h * 0.30;
+    const topH = h * 0.70;
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.4, trunkH, 5), trunkMat
+    );
+    trunk.position.set(x, base + trunkH / 2, z);
+    const top = new THREE.Mesh(
+      new THREE.ConeGeometry(h * 0.17, topH, 6), leafMat
+    );
+    top.position.set(x, base + trunkH + topH / 2, z);
     top.castShadow = true;
+    trunk.castShadow = true;
     scene.add(trunk, top);
   }
 

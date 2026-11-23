@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
+import { playShellFireAt, unlockAudio } from './audio.js';
 
 // ---------- tunables ----------
 const TUNING = {
@@ -13,8 +14,8 @@ const TUNING = {
   playerReload: 0.9,
   enemyReload: 1.9,
 };
-const CAM_DIST = 11;
-const CAM_HEIGHT = 6.2;
+const CAM_DIST = 13;
+const CAM_HEIGHT = 7.0;
 
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
@@ -173,11 +174,13 @@ document.addEventListener('mousemove', e => {
 $('start-btn').addEventListener('click', () => {
   resetMatch();
   safeRequestPointerLock();
+  unlockAudio();
   music.play().catch(() => { /* autoplay blocked */ });
 });
 $('restart-btn').addEventListener('click', () => {
   resetMatch();
   safeRequestPointerLock();
+  unlockAudio();
   music.play().catch(() => {});
 });
 
@@ -203,6 +206,7 @@ function tryFire(tank) {
   const vel = dir.clone().multiplyScalar(SHELL_SPEED);
   const shell = new Shell(scene, _muzzle, vel, tank);
   shells.push(shell);
+  playShellFireAt(_muzzle.clone(), camera.position);
 }
 
 // ---------- HUD ----------
@@ -272,7 +276,7 @@ function updateEnemy(e, dt) {
   const f = new THREE.Vector3(Math.sin(e.heading), 0, Math.cos(e.heading));
   e.pos.x += f.x * e.speed * dt;
   e.pos.z += f.z * e.speed * dt;
-  resolveObstacles(e.pos, 1.7);
+  resolveObstacles(e.pos, e.collisionRadius);
 
   // turret tracks player
   const tYaw = toPlayer; // world heading toward player
@@ -336,7 +340,7 @@ function update(dt) {
     const f = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
     player.pos.x += f.x * player.speed * dt;
     player.pos.z += f.z * player.speed * dt;
-    resolveObstacles(player.pos, 1.7);
+    resolveObstacles(player.pos, player.collisionRadius);
 
     // turret aims to aimYaw (world), pitch
     player.turretLocalYaw = aimYaw - player.heading;
@@ -439,12 +443,12 @@ if (menuTitle) menuTitle.textContent = 'LOADING…';
 async function init() {
   try {
     models = await loadTankModels();
+    resetMatch();
   } catch (err) {
     console.error('Failed to load tank models', err);
-    if (menuTitle) menuTitle.textContent = 'MODEL LOAD FAILED — see console';
+    if (menuTitle) menuTitle.textContent = 'STARTUP FAILED — see console';
     return;
   }
-  resetMatch();
   state = 'menu';
   if (menuTitle) menuTitle.textContent = 'IRON VALLEY';
   menuOverlay.classList.remove('hidden');

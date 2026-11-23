@@ -11,7 +11,7 @@ npm run build    # production build into dist/
 npm run preview  # serve the production build
 ```
 
-Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3).
+Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3). Shell-fire SFX: `public/audio/shell-fire.mp3` (Stable Audio 3, One-shot).
 
 ## Controls
 
@@ -32,11 +32,23 @@ Two distinct aim cues: a small **green ring** is where the barrel actually point
 
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
 - `src/world.js` — terrain height function, obstacles (rocks/ruins), scenery, obstacle collision
+- `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage
 - `src/shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
+- `src/audio.js` — positional shell-fire SFX (speed-of-sound delay + distance attenuation)
 - `src/styles.css` — HUD, cues, overlays
 
 Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING` block at the top of `src/main.js`.
+
+## World scale (meters)
+
+1 game unit = 1 meter. Every asset declares its real-world size in `src/scale.js` (`ASSETS` manifest); loaders scale imported geometry so it matches — e.g. a tank GLB is scaled so its footprint long axis equals 6 m, trees are 10 m tall. To add a new asset:
+
+1. Drop the file under `public/models/`.
+2. Add an entry to `ASSETS` in `src/scale.js` with kind (`tank` / `tree` / `props`) and its real-world size (`lengthM` / `heightM` / `targetMeters`).
+3. Reference it in the loader. Per-instance overrides: pass `{ lengthM: ... }` / `{ heightM: ... }` to the constructor/loader.
+
+Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
 
 ## Conventions
 

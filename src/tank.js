@@ -3,22 +3,20 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { terrainHeight } from './world.js';
+import { ASSETS, tankRadius } from './scale.js';
 
-export const TANK_RADIUS = 1.7;
-export const TANK_MODELS = {
-  tank_1: 'models/tank_1.glb',
-  tank_2: 'models/tank_2_sherman.glb',
-  tank_3: 'models/tank_3.glb',
-  tank_4: 'models/tank_4.glb',
-};
+export const TANK_MODELS = Object.fromEntries(
+  Object.entries(ASSETS).filter(([, a]) => a.kind === 'tank').map(([k, a]) => [k, a.url])
+);
+export const TANK_RADIUS = tankRadius(6); // default footprint; per-tank radius = tankRadius(lengthM)
 
 const loader = new GLTFLoader();
 
 const _tmpV = new THREE.Vector3();
 
 export async function loadTankModels() {
-  const entries = await Promise.all(Object.entries(TANK_MODELS).map(async ([key, url]) => {
-    const gltf = await new Promise((res, rej) => loader.load(url, res, undefined, rej));
+  const entries = await Promise.all(Object.entries(ASSETS).filter(([, a]) => a.kind === 'tank').map(async ([key, asset]) => {
+    const gltf = await new Promise((res, rej) => loader.load(asset.url, res, undefined, rej));
     return [key, gltf];
   }));
   return Object.fromEntries(entries); // {tank_1: gltf, ...}
@@ -48,7 +46,9 @@ function cloneMaterials(root) {
 }
 
 export class Tank {
-  constructor({ modelKey = 'tank_2', x, z, heading, isPlayer = false, scene, models }) {
+  constructor({ modelKey = 'tank_2', x, z, heading, isPlayer = false, scene, models, lengthM }) {
+    this.lengthM = lengthM ?? ASSETS[modelKey]?.lengthM ?? 6;
+    this.collisionRadius = tankRadius(this.lengthM);
     this.isPlayer = isPlayer;
     this.maxHp = 100;
     this.hp = this.maxHp;
@@ -65,7 +65,8 @@ export class Tank {
     this.aiState = { moveDir: 1, repickTimer: 0 };
     this.wreckTilt = 0;
 
-    const gltf = models[modelKey];
+    const gltf = models && models[modelKey];
+    if (!gltf) throw new Error(`tank model '${modelKey}' not loaded`);
     this.modelKey = modelKey;
     // Strip the existing root transform baseline: clone + clone materials
     this.model = cloneMaterials(gltf.scene.clone(true));
@@ -107,8 +108,7 @@ export class Tank {
       }
     });
     const size = rawBbox.getSize(new THREE.Vector3());
-    const targetFootprint = 2.6;
-    const s = targetFootprint / Math.max(size.x, size.z);
+    const s = this.lengthM / Math.max(size.x, size.z); // meters, not arbitrary units
     wrapper.scale.setScalar(s);
     // grounding from the manually measured bbox (scaled) — avoid Box3.setFromObject,
     // which returns wrong min.y for cloned/skinned rigs

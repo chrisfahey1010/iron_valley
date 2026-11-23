@@ -19,6 +19,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `world.js` — terrain height fn, obstacles (rocks/ruins), scenery, obstacle collision
+- `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
 - `shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
 - `styles.css` — HUD, cues, overlays
