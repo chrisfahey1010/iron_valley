@@ -122,6 +122,14 @@ export class Tank {
     return this.muzzle.getWorldPosition(out);
   }
 
+  dispose() {
+    this.group.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); }
+    });
+    if (this.group.parent) this.group.parent.remove(this.group);
+  }
+
   damage(amount) {
     if (!this.alive) return;
     this.hp -= amount;

@@ -78,8 +78,8 @@ function resetMatch() {
   for (const s of shells) s.dispose();
   shells = [];
   // remove old tanks
-  if (player) scene.remove(player.group);
-  for (const e of enemies) scene.remove(e.group);
+  if (player) player.dispose();
+  for (const e of enemies) e.dispose();
   player = makePlayer();
   enemies = makeEnemies();
   aimYaw = SPAWN_HEADING;
@@ -98,10 +98,17 @@ function resetMatch() {
 }
 
 // ---------- input ----------
+function safeRequestPointerLock() {
+  try {
+    const p = canvas.requestPointerLock?.();
+    if (p && typeof p.catch === 'function') p.catch(() => { /* pointer lock unavailable */ });
+  } catch { /* pointer lock unavailable */ }
+}
+
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
   keys.add(e.code);
-  if (e.code === 'KeyR') { resetMatch(); canvas.requestPointerLock?.(); }
+  if (e.code === 'KeyR') { resetMatch(); safeRequestPointerLock(); }
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
@@ -109,7 +116,7 @@ window.addEventListener('blur', () => keys.clear());
 canvas.addEventListener('mousedown', e => {
   if (state !== 'playing') return;
   if (document.pointerLockElement !== canvas) {
-    canvas.requestPointerLock();
+    safeRequestPointerLock();
     return;
   }
   if (e.button === 0) tryFire(player);
@@ -122,11 +129,11 @@ document.addEventListener('mousemove', e => {
 
 $('start-btn').addEventListener('click', () => {
   resetMatch();
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 });
 $('restart-btn').addEventListener('click', () => {
   resetMatch();
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 });
 
 // ---------- firing ----------
