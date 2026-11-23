@@ -1,51 +1,71 @@
-// Audio: positional shell-fire SFX with simulated speed of sound.
-// Schedules each shot's blast to start at `now + distance/c` from the camera,
-// and scales volume by distance so distant shots are quieter.
+// Audio: positional shell-fire and impact SFX with simulated speed of sound.
+// Schedules each event's blast to start at `now + distance/c` from the camera,
+// and scales volume by distance so distant events are quieter.
 
 const SOUND_SPEED = 343; // m/s (game units ~ meters)
 const SFX_VOLUME = 0.9;
 
-let ctx = null;
-let shellBuffer = null;
-let loadPromise = null;
+const IMPACT_FILES = {
+  tank: ['/audio/impact-tank-a.mp3', '/audio/impact-tank-b.mp3'],
+  terrain: ['/audio/impact-terrain-a.mp3', '/audio/impact-terrain-b.mp3'],
+  rock: ['/audio/impact-rock-a.mp3', '/audio/impact-rock-b.mp3'],
+};
 
-async function ensureBuffer() {
-  if (shellBuffer) return shellBuffer;
-  if (loadPromise) return loadPromise;
-  loadPromise = (async () => {
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
-    const res = await fetch('/audio/shell-fire.mp3');
-    if (!res.ok) throw new Error('shell-fire.mp3 missing');
-    const bytes = await res.arrayBuffer();
-    shellBuffer = await ctx.decodeAudioData(bytes.slice(0));
-    return shellBuffer;
-  })();
-  return loadPromise;
+let ctx = null;
+const buffers = new Map(); // url -> Promise<AudioBuffer>
+
+async function ensureBuffer(url) {
+  if (!buffers.has(url)) {
+    buffers.set(url, (async () => {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(url + ' missing');
+      const bytes = await res.arrayBuffer();
+      return await ctx.decodeAudioData(bytes.slice(0));
+    })());
+  }
+  return buffers.get(url);
 }
 
 // Resume the context from a user gesture (e.g. Start Mission).
 export function unlockAudio() {
-  ensureBuffer().catch(() => {});
+  ensureBuffer('/audio/shell-fire.mp3').catch(() => {});
+  for (const urls of Object.values(IMPACT_FILES)) for (const url of urls) ensureBuffer(url).catch(() => {});
+}
+
+function scheduleAt(buffer, worldPos, listenerPos, volume = SFX_VOLUME) {
+  const dist = Math.max(0, worldPos.distanceTo(listenerPos));
+  const delaySec = Math.max(0, dist / SOUND_SPEED);
+  // inverse-square-ish falloff, clamped so distant events stay audible
+  const attenuation = 1 / (1 + dist * 0.045);
+  const gain = ctx.createGain();
+  gain.gain.value = volume * attenuation;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(gain).connect(ctx.destination);
+  src.start(ctx.currentTime + delaySec);
 }
 
 export async function playShellFireAt(worldPos, listenerPos) {
   try {
-    const buffer = await ensureBuffer();
+    const buffer = await ensureBuffer('/audio/shell-fire.mp3');
     if (!buffer) return;
-    const dist = Math.max(0, worldPos.distanceTo(listenerPos));
-    const delaySec = Math.max(0, dist / SOUND_SPEED);
-    // inverse-square-ish falloff, clamped so distant shots stay audible
-    const attenuation = 1 / (1 + dist * 0.045);
-    const gain = ctx.createGain();
-    gain.gain.value = SFX_VOLUME * attenuation;
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(gain).connect(ctx.destination);
-    const startAt = ctx.currentTime + delaySec;
-    src.start(startAt);
+    scheduleAt(buffer, worldPos, listenerPos);
   } catch (err) {
-    // audio is best-effort; never crash the game on a hiccup
     console.warn('shell-fire sfx failed', err);
+  }
+}
+
+export async function playImpactAt(kind, worldPos, listenerPos) {
+  const urls = IMPACT_FILES[kind];
+  if (!urls) return;
+  const url = urls[Math.floor(Math.random() * urls.length)];
+  try {
+    const buffer = await ensureBuffer(url);
+    if (!buffer) return;
+    scheduleAt(buffer, worldPos, listenerPos);
+  } catch (err) {
+    console.warn('impact sfx failed', err);
   }
 }

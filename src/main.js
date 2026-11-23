@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
-import { playShellFireAt, unlockAudio } from './audio.js';
+import { playShellFireAt, playImpactAt, unlockAudio } from './audio.js';
 
 // ---------- tunables ----------
 const TUNING = {
@@ -360,6 +360,8 @@ function update(dt) {
         const dmg = shells[i].owner.isPlayer ? TUNING.shellPlayerDamage : TUNING.enemy.damage;
         r.target.damage(dmg);
       }
+      const kind = r.reason === 'tank' ? 'tank' : r.reason === 'obstacle' ? 'rock' : 'terrain';
+      if (r.impactPoint) playImpactAt(kind, r.impactPoint, camera.position);
       shells[i].dispose();
       shells.splice(i, 1);
     }

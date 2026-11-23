@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-23 — positional impact SFX (Stable Audio 3)
+
+- **public/audio/impact-{tank,terrain,rock}-{a,b}.mp3** (new) — 2 variants each, ~2s One-shot clips: tank hits (metallic clang/thud), terrain (dirt rumble/boom), rock (shell blast off rock).
+- **src/audio.js** — Refactored into shared `ensureBuffer`/`scheduleAt`; added `playImpactAt(kind, worldPos, listenerPos)`. `unlockAudio()` preloads shell-fire + all impact clips.
+- **src/main.js** — On shell impact, plays the matching sound at the impact point: `tank` → tank, `obstacle` → rock, `terrain`/`bounds` → terrain. Random variant per impact.
+- **README.md** — Audio assets and module map updated.
 ## 2026-11-23 — tank visibility & aiming fixes
 
 - **src/tank.js** — Fixed invisible tanks: `Box3.setFromObject(wrapper, false)` returned a garbage bounding box (min.y ≈ -22.89) for the cloned/skinned rig, inflating `wrapper.position.y`. Grounding now derives from the manually measured geometry bounding box (scaled by the normalization factor). Tank now visibly grounds at sane scale (~0.15–0.18) for player and enemies.
