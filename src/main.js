@@ -94,6 +94,7 @@ let models = null;            // {tank_1: gltf, ...} loaded before match start
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
 let aimYaw = SPAWN_HEADING, aimPitch = 0.12;
+let camYaw = SPAWN_HEADING;
 let startTime = 0, frameId = null, lastTime = 0;
 const keys = new Set();
 const clockStart = performance.now();
@@ -117,28 +118,54 @@ function makeEnemies() {
 
 function resetMatch() {
   window.__iv && (window.__iv.impacts = []);
-  // clear shells
-  for (const s of shells) s.dispose();
-  shells = [];
-  // remove old tanks
-  if (player) player.dispose();
-  for (const e of enemies) e.dispose();
-  player = makePlayer();
-  enemies = makeEnemies();
-  aimYaw = SPAWN_HEADING;
-  aimPitch = 0.12;
-  for (const e of enemies) {
-    e.turretLocalYaw = Math.PI - e.heading; // roughly face player
-    e.aiState = { moveDir: Math.random() < 0.5 ? -1 : 1, repickTimer: Math.random() * 2 };
+  // Clear shells and old tanks even if something below throws.
+  try {
+    for (const s of shells) s.dispose();
+    shells = [];
+  } catch (err) {
+    console.error('shell cleanup failed', err);
+    shells = [];
   }
-  player.alive = true;
+  try {
+    if (player) player.dispose();
+    for (const e of enemies) e.dispose();
+  } catch (err) {
+    console.error('tank cleanup failed', err);
+  }
+  try {
+    player = makePlayer();
+    enemies = makeEnemies();
+    aimYaw = SPAWN_HEADING;
+    aimPitch = 0.12;
+    for (const e of enemies) {
+      e.turretLocalYaw = Math.PI - e.heading; // roughly face player
+      e.aiState = { moveDir: Math.random() < 0.5 ? -1 : 1, repickTimer: Math.random() * 2 };
+    }
+    player.alive = true;
+    camYaw = SPAWN_HEADING;
+  } catch (err) {
+    // A reset failure must not leave the game in a frozen/half-reset state.
+    console.error('resetMatch failed, recovering', err);
+    player = null;
+    enemies = [];
+    state = 'menu';
+    if (menuOverlay) {
+      menuOverlay.classList.remove('hidden');
+      const title = menuOverlay.querySelector('h1, .title');
+      if (title) title.textContent = 'RESTART FAILED — click START MISSION';
+    }
+    endOverlay.classList.add('hidden');
+    lastTime = 0;
+    try { updateHUD(); } catch {}
+    return;
+  }
   state = 'playing';
   closePause();
   endOverlay.classList.add('hidden');
   menuOverlay.classList.add('hidden');
   startTime = performance.now();
   lastTime = 0;
-  updateHUD();
+  try { updateHUD(); } catch (err) { console.error('updateHUD failed', err); }
 }
 
 // ---------- input ----------
@@ -385,8 +412,6 @@ function update(dt) {
   updateCues();
 }
 
-let camYaw = SPAWN_HEADING;
-
 function updateCamera() {
   // camera follows aim direction, anchored on player position
   const targetYaw = aimYaw;
@@ -419,15 +444,28 @@ function endMatch(victory) {
 
 function loop(t) {
   frameId = requestAnimationFrame(loop);
-
-window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+  // window.__iv is installed once at module scope (not per frame)
   if (!lastTime) lastTime = t;
   const dt = Math.min(0.05, (t - lastTime) / 1000);
   lastTime = t;
-  if (state === 'playing' && !paused) {
-    update(dt);
+  const frameStart = performance.now();
+  try {
+    if (state === 'playing' && !paused) {
+      update(dt);
+    }
+    renderer.render(scene, camera);
+  } catch (err) {
+    // A bad frame should never permanently wedge the game; log and keep the loop alive.
+    console.error('Iron Valley frame error:', err);
   }
-  renderer.render(scene, camera);
+  // Stuck-frame watchdog: if a single frame blows the budget, log the stack so
+  // the culprit can be pinpointed in the console without freezing the page.
+  const elapsed = performance.now() - frameStart;
+  if (elapsed > 250) {
+    try {
+      console.error(`Iron Valley slow frame: ${elapsed.toFixed(0)}ms`, new Error('slow frame stack').stack);
+    } catch {}
+  }
 }
 
 function resize() {

@@ -26,6 +26,10 @@ Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is f
 
 Start screen: click **START MISSION**. The start click captures the mouse and does not fire.
 
+## Restart resilience
+
+`resetMatch()` (R key / restart button / end-of-match restart) is failure-tolerant: shell and tank cleanup, then player/enemy creation, each run in their own guarded block, and a reset that fails surfaces a 'RESTART FAILED' menu instead of a half-reset game. The render loop is also guarded — a throwing frame logs to the console and the loop continues, and a slow frame (>250 ms) logs a `Iron Valley slow frame` stack trace to the console for diagnosis.
+
 Two distinct aim cues: a small **green ring** is where the barrel actually points (bore), a **yellow dashed ring** is the predicted first-impact point (recomputed every frame, lead moving targets).
 
 ## Module map

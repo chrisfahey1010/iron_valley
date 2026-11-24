@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-23 — restart-crash hardening
+
+- **src/main.js** — `resetMatch()` is now failure-tolerant: shells, tanks, and player/enemy creation are each guarded so a failed reset degrades to a visible menu state instead of a frozen half-reset game; `camYaw` is reset on restart (previously stale).
+- **src/main.js** — `loop()` is guarded: a throwing frame logs to the console and the loop continues, and a slow frame (>250 ms) logs a `Iron Valley slow frame` stack trace for diagnosis. Removed the duplicated per-frame `window.__iv` assignment (single module-scope install now).
+- **src/tank.js** — `dispose()` now stops the animation mixer and disposes the muzzle-flash cone geometry (the only per-tank-owned geometry; shared geometries are never disposed) — prevents animation/resource leaks across restarts.
+- **README.md** — restart-resilience section added.
+
 ## 2026-11-23 — positional impact SFX (Stable Audio 3)
 
 - **public/audio/impact-{tank,terrain,rock}-{a,b}.mp3** (new) — 2 variants each, ~2s One-shot clips: tank hits (metallic clang/thud), terrain (dirt rumble/boom), rock (shell blast off rock).

@@ -252,6 +252,10 @@ export class Tank {
     this.group.traverse(o => {
       if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); }
     });
+    if (this.mixer) { this.mixer.stopAllAction(); this.mixer = null; }
+    // flash cone geometry is unique to this tank (shared geometries are never disposed)
+    if (this.flashMesh && this.flashMesh.geometry) this.flashMesh.geometry.dispose();
+    if (this.flashMesh) this.flashMesh = null;
     if (this.group.parent) this.group.parent.remove(this.group);
   }
 
