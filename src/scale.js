@@ -18,6 +18,7 @@ export const ASSETS = {
   tank_4:             { url: 'models/tank_4.glb',          kind: 'tank', lengthM: 6 },
   tank_5:             { url: 'models/tank_5_panzer_iv.glb', kind: 'tank', lengthM: 6 },
   tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10 },
+  farmhouse:          { url: 'models/farmhouse.glb', kind: 'props', lengthM: 14 },
 };
 
 export const DEFAULT_TANK_LENGTH = 6; // meters

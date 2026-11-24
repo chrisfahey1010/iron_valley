@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { loadTreeModel, placeTrees } from './tree.js';
+import { loadFarmhouseModel, placeFarmhouses } from './farmhouse.js';
 import { createGrass } from './grass.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
@@ -517,6 +518,9 @@ async function init() {
   try {
     models = await loadTankModels();
     const treeSource = await loadTreeModel();
+    const farmhouseSource = await loadFarmhouseModel();
+    const farmhouseCount = placeFarmhouses(scene, farmhouseSource);
+    console.log(`placed ${farmhouseCount} farmhouses`);
     const treeCount = placeTrees(scene, treeSource);
     console.log(`placed ${treeCount} trees`);
     grass = createGrass(scene);

@@ -36,6 +36,7 @@ Two distinct aim cues: a small **green ring** is where the barrel actually point
 
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
 - `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
+- `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage
 - `src/shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
@@ -57,6 +58,8 @@ Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING`
 Tank assets are built with Blender (headless, see `assets_src/panzer_iv/build_panzer_iv.py`) and loaded via `src/tank.js`. `tank_5` (`public/models/tank_5_panzer_iv.glb`) is the worked example: a stylized low-poly Panzer IV authored at 1 unit = 1 m (X=length −X forward, Y=width, Z=up) and exported with `export_yup=True` — see `docs/TANK_RIG_REFERENCE.md` for the full rig/animation contract. The CC0 tanks (`tank_1/2/3/4`) are the other enemy models; the 4th enemy slot slots onto `tank_5`.
 
 Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). ~130 trees total: valley-edge clusters plus random singles (spawn clear, kept off the river and bridge), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
+
+Farmhouse assets are built with Blender (headless, see `assets_src/farmhouse/build.py`) and loaded via `src/farmhouse.js`. The GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter (14 m footprint, ~10.5 m with chimney); `loadFarmhouseModel()` scales the mesh so the footprint's long axis equals `lengthM` (14 m), and `placeFarmhouses()` roots instances at `terrainHeight(x, z)` with a random Y rotation and slight scale variance (0.9–1.1). ~12 farmhouses total: ~4 near the player spawn (~55–115 m ring) and the rest spread across the valley — spawn clear, kept off the river, bridge, obstacles and trees, and sunk slightly into the ground; a circle collider (r = 8.5 m) per instance. The game renders them flat-shaded alongside the other low-poly assets.
 
 Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
 

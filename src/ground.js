@@ -1,7 +1,7 @@
 // Ground-zone classifier for grass scatter. Pure functions over world.js data.
 import {
   WORLD_SIZE, HALF, PLAY_BOUND, SPAWN, RIVER_HALF_WIDTH, BRIDGE,
-  riverDist, riverCenterX, terrainHeight, obstacles, treeColliders,
+  riverDist, riverCenterX, terrainHeight, obstacles, treeColliders, farmhouseColliders,
 } from './world.js';
 
 export const BANK_BAND = 6;          // river bank band (m)
@@ -18,6 +18,9 @@ export function isObstacleAt(x, z, extra = 1.5) {
     if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
   }
   for (const o of treeColliders) {
+    if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
+  }
+  for (const o of farmhouseColliders) {
     if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
   }
   return false;

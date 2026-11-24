@@ -101,6 +101,9 @@ export const obstacles = placeObstacles();
 // Tree collision circles — registered by src/tree.js during placement.
 export const treeColliders = [];
 
+// Farmhouse collision circles — registered by src/farmhouse.js during placement.
+export const farmhouseColliders = [];
+
 // ---- World build ----
 export function buildWorld(scene) {
   // Terrain mesh
@@ -212,7 +215,7 @@ export function isOnBridge(x, z) {
 
 // Tank collision: push circle out of obstacles, tree colliders, river bank, and border.
 export function resolveObstacles(pos, radius) {
-  for (const list of [obstacles, treeColliders]) {
+  for (const list of [obstacles, treeColliders, farmhouseColliders]) {
     for (const o of list) {
       const dx = pos.x - o.x, dz = pos.z - o.z;
       const d = Math.hypot(dx, dz);

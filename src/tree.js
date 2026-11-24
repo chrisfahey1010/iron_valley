@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ASSETS, measureRootBbox } from './scale.js';
-import { terrainHeight, obstacles, SPAWN, treeColliders, HALF, riverDist, BRIDGE, rng } from './world.js';
+import { terrainHeight, obstacles, SPAWN, treeColliders, farmhouseColliders, HALF, riverDist, BRIDGE, rng } from './world.js';
 
 const loader = new GLTFLoader();
 
@@ -32,6 +32,9 @@ function tooCloseToSpawn(x, z) {
 
 function tooCloseToObstacle(x, z, extra = 1.2) {
   for (const o of obstacles) {
+    if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
+  }
+  for (const o of farmhouseColliders) {
     if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
   }
   return false;
