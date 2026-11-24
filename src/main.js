@@ -1,6 +1,6 @@
 // Iron Valley — startup, match state, input, camera, AI, HUD, game loop.
 import * as THREE from 'three';
-import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
+import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { loadTreeModel, placeTrees } from './tree.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
@@ -102,9 +102,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87a7bd);
-scene.fog = new THREE.Fog(0x87a7bd, 90, 190);
+scene.fog = new THREE.Fog(0x87a7bd, 180, 520);
 
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1200);
 
 const hemi = new THREE.HemisphereLight(0xbfd6e6, 0x3d4a30, 0.95);
 scene.add(hemi);
@@ -112,9 +112,9 @@ const sun = new THREE.DirectionalLight(0xfff2d8, 1.6);
 sun.position.set(35, 60, 20);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
-sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
-sun.shadow.camera.far = 160;
+sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
+sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
+sun.shadow.camera.far = 400;
 scene.add(sun);
 
 buildWorld(scene);
@@ -135,10 +135,10 @@ function makePlayer() {
 
 function makeEnemies() {
   const spots = [
-    { x: -18, z: 34, heading: Math.PI },
-    { x: 16, z: 36, heading: Math.PI },
-    { x: -26, z: 8, heading: Math.PI / 2 },
-    { x: 26, z: 12, heading: -Math.PI / 2 },
+    { x: -120, z: -260, heading: Math.PI },
+    { x: -20,  z: -230, heading: Math.PI },
+    { x: -110, z: -180, heading: Math.PI / 2 },
+    { x: -30,  z: -160, heading: -Math.PI / 2 },
   ];
   const enemyModels = ['tank_1', 'tank_3', 'tank_4', 'tank_1'];
   return spots.slice(0, TUNING.enemyCount).map((s, i) =>

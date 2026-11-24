@@ -1,6 +1,6 @@
 # Iron Valley
 
-Low-poly 3D tank arena (Three.js + Vite, no backend, no external assets). Take the valley, destroy all enemy armor.
+Low-poly 3D tank valley (Three.js + Vite, no backend, no external assets). A 1 km x 1 km world — terrain, winding river with placeholder bridge, rocks/ruins, trees. Take the valley, destroy all enemy armor.
 
 ## Dev environment
 
@@ -18,7 +18,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 ## Module map (`src/`)
 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
-- `world.js` — terrain height fn, obstacles (rocks/ruins), scenery, obstacle collision
+- `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
 - `shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction

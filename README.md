@@ -1,6 +1,6 @@
 # Iron Valley
 
-Low-poly 3D tank arena in the browser. Take the valley, destroy all enemy armor.
+Low-poly 3D tank valley in the browser — a 1 km x 1 km world with a winding river and a placeholder bridge. Take the valley, destroy all enemy armor.
 
 ## Setup & run
 
@@ -35,7 +35,7 @@ Two distinct aim cues: a small **green ring** is where the barrel actually point
 ## Module map
 
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
-- `src/world.js` — terrain height function, obstacles (rocks/ruins), scenery, obstacle collision
+- `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage
 - `src/shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
@@ -52,7 +52,7 @@ Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING`
 2. Add an entry to `ASSETS` in `src/scale.js` with kind (`tank` / `tree` / `props`) and its real-world size (`lengthM` / `heightM` / `targetMeters`).
 3. Reference it in the loader. Per-instance overrides: pass `{ lengthM: ... }` / `{ heightM: ... }` to the constructor/loader.
 
-Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). 69 trees total: forest clusters outside the arena plus random singles (up to ~20 allowed inside the arena), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
+Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). ~130 trees total: valley-edge clusters plus random singles (spawn clear, kept off the river and bridge), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
 
 Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
 

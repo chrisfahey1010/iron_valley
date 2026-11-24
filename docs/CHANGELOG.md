@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-23 — 1 km map: river, placeholder bridge, no arena
+
+- **src/world.js** (rewritten) — `WORLD_SIZE` 120 → 1000 m; `PLAY_BOUND = 490` soft square clamp replaces the circular arena (ring mesh removed, arena-ring code gone). Terrain is now a rolling valley 1 km plane (rim rise near edges, spawn flatten). New pure `riverCenterX(z)` centerline with a carved channel (clamped flat bed at -2.2 m), a transparent water ribbon following the same centerline, and a tint pass on the channel color. Placeholder bridge at z = -120 (deck + rails + 3 supports, deck height 2.4 m); `terrainHeight()` includes a smooth bridge-deck override so tanks/shells/camera ground correctly. Seeded RNG (`mulberry32`) + deterministic scatter of 16 rocks/ruins (spawn/river/bridge/spacing clearances). `resolveObstacles()` now clamps to the square border and pushes out of the river band except on the bridge span.
+- **src/tree.js** — Scatter reworked for the big map: ~130 trees (~45% valley-rim clusters + random singles), spawn/river/bridge/obstacle/spacing clearances; rooted same as before; colliders registered the same way.
+- **src/main.js** — Fog/camera range (180–520 / 1200 m), shadow frustum widened (±90 m), enemy spots relocated to the south bank near the river/spawn; `ARENA_RADIUS` import/usage removed.
+- **README.md / AGENTS.md** — World description, module map, and tree-scatter docs updated.
+
 ## 2026-11-23 — Blender-built conifer trees (replacing placeholders)
 
 - **assets_src/tree/build.py** (new) — Headless Blender build: low-poly 10m conifer (tapered trunk + 3 stacked jittered-cone foliage layers, flat shading, Iron Valley palette). Outputs `assets_src/tree/tree.blend` (editable source) and `public/models/tree_conifer.glb` (game asset, origin at ground, Y-up).
