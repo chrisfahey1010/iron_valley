@@ -46,7 +46,7 @@ function cloneMaterials(root) {
 }
 
 export class Tank {
-  constructor({ modelKey = 'tank_2', x, z, heading, isPlayer = false, scene, models, lengthM }) {
+  constructor({ modelKey = 'tank_6', x, z, heading, isPlayer = false, scene, models, lengthM }) {
     this.lengthM = lengthM ?? ASSETS[modelKey]?.lengthM ?? 6;
     this.collisionRadius = tankRadius(this.lengthM);
     this.isPlayer = isPlayer;

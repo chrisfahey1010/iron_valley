@@ -133,7 +133,7 @@ const keys = new Set();
 const clockStart = performance.now();
 
 function makePlayer() {
-  return new Tank({ modelKey: 'tank_2', x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING, isPlayer: true, scene, models });
+  return new Tank({ modelKey: 'tank_6', x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING, isPlayer: true, scene, models });
 }
 
 function makeEnemies() {

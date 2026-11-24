@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 — player tank: M24 Chaffee (tank_6)
+
+- **assets_src/m24_chaffee/build_m24_chaffee.py** (new) — Blender build of a stylized low-poly M24 Chaffee (~5 m length, olive drab, low rounded turret, long slim barrel with muzzle brake, 5 road wheels per side + drive sprocket). Armature root `Root`, tread bones `TankTrack1/2.{L,R}` with explicit `matrix_parent_inverse`, clips `Tank_Forward/Backwards/TurningLeft/Right` (1 s looped). Exports `public/models/tank_6_m24_chaffee.glb` with `export_yup=True`.
+- **src/scale.js** — `tank_6` added (kind `tank`, lengthM **5**); legacy CC0 Sherman `tank_2` retired (entry removed; `tank_2_sherman.glb` left on disk, unreferenced).
+- **src/main.js / src/tank.js** — player spawn now uses `tank_6`; default model key updated.
+- **README.md** — tank asset section updated (M24 player, Panzer IV worked example, retired tank_2).
+
 ## 2026-11-23 — 1 km map: river, placeholder bridge, no arena
 
 - **src/world.js** (rewritten) — `WORLD_SIZE` 120 → 1000 m; `PLAY_BOUND = 490` soft square clamp replaces the circular arena (ring mesh removed, arena-ring code gone). Terrain is now a rolling valley 1 km plane (rim rise near edges, spawn flatten). New pure `riverCenterX(z)` centerline with a carved channel (clamped flat bed at -2.2 m), a transparent water ribbon following the same centerline, and a tint pass on the channel color. Placeholder bridge at z = -120 (deck + rails + 3 supports, deck height 2.4 m); `terrainHeight()` includes a smooth bridge-deck override so tanks/shells/camera ground correctly. Seeded RNG (`mulberry32`) + deterministic scatter of 16 rocks/ruins (spawn/river/bridge/spacing clearances). `resolveObstacles()` now clamps to the square border and pushes out of the river band except on the bridge span.

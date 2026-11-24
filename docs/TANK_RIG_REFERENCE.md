@@ -89,6 +89,10 @@ Export a GLB that satisfies:
 - Treads animated via translation (+rotation) — do NOT animate spin via bone roll quaternion
   around the wrong local axis or treads will wobble.
 
+## Worked examples: tank_5 (Panzer IV) & tank_6 (M24 Chaffee)
+
+`tank_6` (`public/models/tank_6_m24_chaffee.glb`, player) — built by `assets_src/m24_chaffee/build_m24_chaffee.py`; same contract (armature root `Root`, tread bones `TankTrack{1,2}.{L,R}`, 1 s looped clips, `export_yup=True`), authored at 1 unit = 1 m with ~5 m footprint.
+
 ## Worked example: tank_5 (Panzer IV)
 
 `public/models/tank_5_panzer_iv.glb` — stylized low-poly Panzer IV, 4th enemy slot
