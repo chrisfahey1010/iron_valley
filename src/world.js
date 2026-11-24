@@ -124,7 +124,12 @@ export function buildWorld(scene) {
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const groundTex = new THREE.TextureLoader().load('/textures/grass_ground.png');
+  groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+  groundTex.repeat.set(110, 110);
+  groundTex.anisotropy = 4;
+  groundTex.colorSpace = THREE.SRGBColorSpace;
+  const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex }));
   terrain.receiveShadow = true;
   scene.add(terrain);
 

@@ -19,6 +19,8 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
+- `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter
+- `grass.js` — instanced tuft renderer (crossed quads, wind sway, distance fade, per-instance tint); built in `main.js` init after trees
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
 - `docs/TANK_RIG_REFERENCE.md` — full rig/animation contract for future Blender-built tanks

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { loadTreeModel, placeTrees } from './tree.js';
+import { createGrass } from './grass.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
@@ -121,6 +122,7 @@ buildWorld(scene);
 
 // ---------- state ----------
 let models = null;            // {tank_1: gltf, ...} loaded before match start
+let grass = null;              // instanced grass tufts (see grass.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
 let aimYaw = SPAWN_HEADING, aimPitch = 0.12;
@@ -483,6 +485,7 @@ function loop(t) {
     if (state === 'playing' && !paused) {
       update(dt);
     }
+    if (grass) grass.update(t / 1000);
     renderer.render(scene, camera);
   } catch (err) {
     // A bad frame should never permanently wedge the game; log and keep the loop alive.
@@ -516,6 +519,7 @@ async function init() {
     const treeSource = await loadTreeModel();
     const treeCount = placeTrees(scene, treeSource);
     console.log(`placed ${treeCount} trees`);
+    grass = createGrass(scene);
     resetMatch();
   } catch (err) {
     console.error('Failed to load tank models', err);
