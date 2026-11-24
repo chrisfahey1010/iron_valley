@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-23 — pause-menu volume controls (master/effects/music)
+
+- **src/audio.js** — New `setMasterVolume`/`getMasterVolume` and `setEffectsVolume`/`getEffectsVolume`; a lazy master gain node routes all SFX through the master level; SFX gain is now `baseVolume × effectsVolume × attenuation`; both persist to localStorage (`iv-master-volume`, `iv-effects-volume`).
+- **src/main.js** — Pause menu gains MASTER and EFFECTS sliders alongside MUSIC; music volume is now `master × musicBase` (localStorage `iv-music-volume`), initialized into the sliders at startup; `openPause()` refreshes all three sliders from stored values.
+- **index.html / README.md** — Two new pause-menu rows; controls table updated.
+
 ## 2026-11-23 — restart-crash hardening
 
 - **src/main.js** — `resetMatch()` is now failure-tolerant: shells, tanks, and player/enemy creation are each guarded so a failed reset degrades to a visible menu state instead of a frozen half-reset game; `camYaw` is reset on restart (previously stale).

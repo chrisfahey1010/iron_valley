@@ -12,13 +12,39 @@ const IMPACT_FILES = {
 };
 
 let ctx = null;
+let masterGain = null;
+let masterVolume = 1;
+let effectsVolume = SFX_VOLUME;
 const buffers = new Map(); // url -> Promise<AudioBuffer>
+
+function ensureMasterGain() {
+  if (ctx && !masterGain) {
+    masterGain = ctx.createGain();
+    masterGain.gain.value = masterVolume;
+    masterGain.connect(ctx.destination);
+  }
+}
+
+export function getMasterVolume() { return masterVolume; }
+export function setMasterVolume(v01) {
+  masterVolume = Math.min(1, Math.max(0, v01));
+  ensureMasterGain();
+  if (masterGain) masterGain.gain.value = masterVolume;
+  localStorage.setItem('iv-master-volume', String(masterVolume));
+}
+
+export function getEffectsVolume() { return effectsVolume; }
+export function setEffectsVolume(v01) {
+  effectsVolume = Math.min(1, Math.max(0, v01));
+  localStorage.setItem('iv-effects-volume', String(effectsVolume));
+}
 
 async function ensureBuffer(url) {
   if (!buffers.has(url)) {
     buffers.set(url, (async () => {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+      ensureMasterGain();
       const res = await fetch(url);
       if (!res.ok) throw new Error(url + ' missing');
       const bytes = await res.arrayBuffer();
@@ -40,10 +66,10 @@ function scheduleAt(buffer, worldPos, listenerPos, volume = SFX_VOLUME) {
   // inverse-square-ish falloff, clamped so distant events stay audible
   const attenuation = 1 / (1 + dist * 0.045);
   const gain = ctx.createGain();
-  gain.gain.value = volume * attenuation;
+  gain.gain.value = volume * effectsVolume * attenuation;
   const src = ctx.createBufferSource();
   src.buffer = buffer;
-  src.connect(gain).connect(ctx.destination);
+  src.connect(gain).connect(masterGain || ctx.destination);
   src.start(ctx.currentTime + delaySec);
 }
 

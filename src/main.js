@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
-import { playShellFireAt, playImpactAt, unlockAudio } from './audio.js';
+import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
 // ---------- tunables ----------
 const TUNING = {
@@ -29,21 +29,45 @@ const pauseOverlay = $('pause-overlay');
 // ---------- music / pause ----------
 const music = new Audio('/audio/combat-theme.mp3');
 music.loop = true;
-music.volume = Math.min(1, Math.max(0, parseFloat(localStorage.getItem('iv-music-volume') ?? '0.7') || 0));
+function clamp01(v) { return Math.min(1, Math.max(0, v)); }
+const savedMaster = parseFloat(localStorage.getItem('iv-master-volume') ?? '1') || 0;
+const savedMusic = parseFloat(localStorage.getItem('iv-music-volume') ?? '0.7') || 0;
+const savedEffects = parseFloat(localStorage.getItem('iv-effects-volume') ?? '0.9') || 0;
+setMasterVolume(savedMaster);
+setEffectsVolume(savedEffects);
+let musicBase = clamp01(savedMusic);
+function applyMusicVolume() { music.volume = clamp01(masterForMusic() * musicBase); }
+function masterForMusic() { return getMasterVolume(); }
 let paused = false;
 
 function setVolume(v01) {
-  music.volume = v01;
-  localStorage.setItem('iv-music-volume', String(v01));
-  const pct = Math.round(v01 * 100);
+  musicBase = clamp01(v01);
+  localStorage.setItem('iv-music-volume', String(musicBase));
+  applyMusicVolume();
+  const pct = Math.round(musicBase * 100);
   $('volume-slider').value = String(pct);
   $('volume-value').textContent = pct + '%';
+}
+function setMaster(v01) {
+  setMasterVolume(clamp01(v01));
+  applyMusicVolume();
+  const pct = Math.round(getMasterVolume() * 100);
+  $('master-slider').value = String(pct);
+  $('master-value').textContent = pct + '%';
+}
+function setEffects(v01) {
+  setEffectsVolume(clamp01(v01));
+  const pct = Math.round(getEffectsVolume() * 100);
+  $('effects-slider').value = String(pct);
+  $('effects-value').textContent = pct + '%';
 }
 function openPause() {
   if (state !== 'playing' || paused) return;
   paused = true;
   pauseOverlay.classList.remove('hidden');
-  setVolume(music.volume);
+  setMaster(getMasterVolume());
+  setVolume(musicBase);
+  setEffects(getEffectsVolume());
   if (document.pointerLockElement) document.exitPointerLock();
 }
 function closePause() {
@@ -51,6 +75,11 @@ function closePause() {
   pauseOverlay.classList.add('hidden');
 }
 $('volume-slider').addEventListener('input', e => setVolume(e.target.value / 100));
+$('master-slider').addEventListener('input', e => setMaster(e.target.value / 100));
+$('effects-slider').addEventListener('input', e => setEffects(e.target.value / 100));
+setMaster(getMasterVolume());
+setEffects(getEffectsVolume());
+setVolume(musicBase);
 $('resume-btn').addEventListener('click', () => {
   closePause();
   safeRequestPointerLock();
