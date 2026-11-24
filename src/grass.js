@@ -111,6 +111,14 @@ varying vec3 vTint;
 varying float vAlpha;
 varying vec3 vTint;
 ` + shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+// Crossed-quad grass must light the same on both sides: force a world-up
+// normal in view space so three.js doesn't flip it (front/back, up/down).
+vec3 viewUp = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+normal = viewUp;
+nonPerturbedNormal = viewUp;`
+    ).replace(
       '#include <map_fragment>',
       `#include <map_fragment>
 if (vAlpha < 0.12) discard;
