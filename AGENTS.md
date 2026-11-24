@@ -21,6 +21,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
+- `docs/TANK_RIG_REFERENCE.md` — full rig/animation contract for future Blender-built tanks
 - `shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
 - `styles.css` — HUD, cues, overlays
 

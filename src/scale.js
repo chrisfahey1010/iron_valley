@@ -16,6 +16,7 @@ export const ASSETS = {
   tank_2:             { url: 'models/tank_2_sherman.glb',  kind: 'tank', lengthM: 6 },
   tank_3:             { url: 'models/tank_3.glb',          kind: 'tank', lengthM: 6 },
   tank_4:             { url: 'models/tank_4.glb',          kind: 'tank', lengthM: 6 },
+  tank_5:             { url: 'models/tank_5_panzer_iv.glb', kind: 'tank', lengthM: 6 },
   tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10 },
 };
 

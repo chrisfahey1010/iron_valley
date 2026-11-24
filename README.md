@@ -52,6 +52,8 @@ Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING`
 2. Add an entry to `ASSETS` in `src/scale.js` with kind (`tank` / `tree` / `props`) and its real-world size (`lengthM` / `heightM` / `targetMeters`).
 3. Reference it in the loader. Per-instance overrides: pass `{ lengthM: ... }` / `{ heightM: ... }` to the constructor/loader.
 
+Tank assets are built with Blender (headless, see `assets_src/panzer_iv/build_panzer_iv.py`) and loaded via `src/tank.js`. `tank_5` (`public/models/tank_5_panzer_iv.glb`) is the worked example: a stylized low-poly Panzer IV authored at 1 unit = 1 m (X=length −X forward, Y=width, Z=up) and exported with `export_yup=True` — see `docs/TANK_RIG_REFERENCE.md` for the full rig/animation contract. The CC0 tanks (`tank_1/2/3/4`) are the other enemy models; the 4th enemy slot slots onto `tank_5`.
+
 Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). ~130 trees total: valley-edge clusters plus random singles (spawn clear, kept off the river and bridge), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
 
 Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
@@ -63,6 +65,8 @@ Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances
 - Barrel pitch is stored as a world-space angle; the turret's loaded rotation is relative to the hull, so aim stays fixed in world space while the hull turns.
 
 ## Tank rig orientation
+
+See `docs/TANK_RIG_REFERENCE.md` for the full rig/animation contract for future Blender-built tanks.
 
 - Hull pose uses `rotation.order = 'YXZ'` (yaw → pitch → roll). Pitch/roll come from terrain height samples (nose/tail, left/right) along the heading, with the forward/up signs chosen so the nose rises up a slope; side slopes roll the tank toward the lower side.
 - Turret carries only yaw (`turretLocalYaw`); it does NOT pitch.

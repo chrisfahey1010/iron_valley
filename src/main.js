@@ -140,7 +140,7 @@ function makeEnemies() {
     { x: -110, z: -180, heading: Math.PI / 2 },
     { x: -30,  z: -160, heading: -Math.PI / 2 },
   ];
-  const enemyModels = ['tank_1', 'tank_3', 'tank_4', 'tank_1'];
+  const enemyModels = ['tank_1', 'tank_3', 'tank_4', 'tank_5'];
   return spots.slice(0, TUNING.enemyCount).map((s, i) =>
     new Tank({ modelKey: enemyModels[i % enemyModels.length], x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
   );
