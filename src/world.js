@@ -1,6 +1,5 @@
 // World: low-poly valley terrain, obstacles (rocks, ruins), scenery.
 import * as THREE from 'three';
-import { ASSETS } from './scale.js';
 
 export const WORLD_SIZE = 120;          // terrain plane size
 export const ARENA_RADIUS = 52;         // drivable boundary
@@ -19,6 +18,9 @@ export function terrainHeight(x, z) {
   const flat = THREE.MathUtils.clamp((d - 8) / 16, 0, 1);
   return h * flat;
 }
+
+// Tree collision circles — registered by src/tree.js during placement.
+export const treeColliders = [];
 
 // Obstacles as circles (for tank/shell collision) plus meshes.
 export const obstacles = [
@@ -83,31 +85,6 @@ export function buildWorld(scene) {
     }
   }
 
-  // Scattered low-poly trees outside the arena (world-scale: total height ~10m)
-  const TREE_HEIGHT = ASSETS.tree.heightM; // meters
-  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a4230, flatShading: true });
-  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2f5230, flatShading: true });
-  for (let i = 0; i < 42; i++) {
-    const ang = Math.random() * Math.PI * 2;
-    const rad = ARENA_RADIUS + 6 + Math.random() * 14;
-    const x = Math.cos(ang) * rad, z = Math.sin(ang) * rad;
-    const base = terrainHeight(x, z);
-    const h = TREE_HEIGHT * (0.85 + Math.random() * 0.3); // variance in real meters
-    const trunkH = h * 0.30;
-    const topH = h * 0.70;
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.25, 0.4, trunkH, 5), trunkMat
-    );
-    trunk.position.set(x, base + trunkH / 2, z);
-    const top = new THREE.Mesh(
-      new THREE.ConeGeometry(h * 0.17, topH, 6), leafMat
-    );
-    top.position.set(x, base + trunkH + topH / 2, z);
-    top.castShadow = true;
-    trunk.castShadow = true;
-    scene.add(trunk, top);
-  }
-
   // Boundary ring (subtle)
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(ARENA_RADIUS, ARENA_RADIUS + 1.6, 64),
@@ -120,14 +97,16 @@ export function buildWorld(scene) {
 
 // Tank collision: push circle out of obstacles and world bounds.
 export function resolveObstacles(pos, radius) {
-  for (const o of obstacles) {
-    const dx = pos.x - o.x, dz = pos.z - o.z;
-    const d = Math.hypot(dx, dz);
-    const min = o.r + radius;
-    if (d < min && d > 0.001) {
-      const push = (min - d);
-      pos.x += (dx / d) * push;
-      pos.z += (dz / d) * push;
+  for (const list of [obstacles, treeColliders]) {
+    for (const o of list) {
+      const dx = pos.x - o.x, dz = pos.z - o.z;
+      const d = Math.hypot(dx, dz);
+      const min = o.r + radius;
+      if (d < min && d > 0.001) {
+        const push = (min - d);
+        pos.x += (dx / d) * push;
+        pos.z += (dz / d) * push;
+      }
     }
   }
   const dist = Math.hypot(pos.x - 0, pos.z - 0);

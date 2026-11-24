@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, ARENA_RADIUS, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
+import { loadTreeModel, placeTrees } from './tree.js';
 import { Shell, predictPath, SHELL_SPEED } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
@@ -512,6 +513,9 @@ if (menuTitle) menuTitle.textContent = 'LOADING…';
 async function init() {
   try {
     models = await loadTankModels();
+    const treeSource = await loadTreeModel();
+    const treeCount = placeTrees(scene, treeSource);
+    console.log(`placed ${treeCount} trees`);
     resetMatch();
   } catch (err) {
     console.error('Failed to load tank models', err);

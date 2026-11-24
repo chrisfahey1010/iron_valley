@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-23 — Blender-built conifer trees (replacing placeholders)
+
+- **assets_src/tree/build.py** (new) — Headless Blender build: low-poly 10m conifer (tapered trunk + 3 stacked jittered-cone foliage layers, flat shading, Iron Valley palette). Outputs `assets_src/tree/tree.blend` (editable source) and `public/models/tree_conifer.glb` (game asset, origin at ground, Y-up).
+- **src/scale.js** — Tree entry now declares its GLB url (`models/tree_conifer.glb`) and height target (10 m); kind comment updated.
+- **src/tree.js** (new) — `loadTreeModel()` loads the GLB and scales it to `heightM`; `placeTrees()` scatters 69 trees (~45% forest clusters + random singles up to 20 inside the arena), rooted at the highest terrain sample under the trunk base, sunk slightly into the ground, standing straight up (rotation.y only), height variance 8.5–11.5 m. Trunks register collidable circles for tanks/enemies (`world.treeColliders`, enforced in `resolveObstacles`).
+- **src/world.js** — Placeholder cone/cylinder tree block removed; obstacles/terrain/ring unchanged.
+- **src/main.js** — Initialization now loads tanks + tree model and places trees before `resetMatch()`.
+
 ## 2026-11-23 — pause-menu volume controls (master/effects/music)
 
 - **src/audio.js** — New `setMasterVolume`/`getMasterVolume` and `setEffectsVolume`/`getEffectsVolume`; a lazy master gain node routes all SFX through the master level; SFX gain is now `baseVolume × effectsVolume × attenuation`; both persist to localStorage (`iv-master-volume`, `iv-effects-volume`).

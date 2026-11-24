@@ -6,8 +6,8 @@
 //   - Per-instance override: pass { lengthM: ... } / { heightM: ... } to the
 //     loader/constructor to place a custom-sized instance.
 //
-// Kinds: 'tank' (scale shortest so its footprint long axis == lengthM),
-//        'tree' (procedural height), 'props' (manual targetMeters).
+// Kinds: 'tank' (scale so its footprint long axis == lengthM),
+//        'tree' (scale so total height == heightM), 'props' (manual targetMeters).
 
 import * as THREE from 'three';
 
@@ -16,7 +16,7 @@ export const ASSETS = {
   tank_2:             { url: 'models/tank_2_sherman.glb',  kind: 'tank', lengthM: 6 },
   tank_3:             { url: 'models/tank_3.glb',          kind: 'tank', lengthM: 6 },
   tank_4:             { url: 'models/tank_4.glb',          kind: 'tank', lengthM: 6 },
-  tree:               { kind: 'tree', heightM: 10 },
+  tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10 },
 };
 
 export const DEFAULT_TANK_LENGTH = 6; // meters

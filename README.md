@@ -48,9 +48,11 @@ Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING`
 
 1 game unit = 1 meter. Every asset declares its real-world size in `src/scale.js` (`ASSETS` manifest); loaders scale imported geometry so it matches — e.g. a tank GLB is scaled so its footprint long axis equals 6 m, trees are 10 m tall. To add a new asset:
 
-1. Drop the file under `public/models/`.
+1. Drop the file under `public/models/`. Blender-built sources live under `assets_src/<asset>/` (build script + editable `.blend`).
 2. Add an entry to `ASSETS` in `src/scale.js` with kind (`tank` / `tree` / `props`) and its real-world size (`lengthM` / `heightM` / `targetMeters`).
 3. Reference it in the loader. Per-instance overrides: pass `{ lengthM: ... }` / `{ heightM: ... }` to the constructor/loader.
+
+Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). 69 trees total: forest clusters outside the arena plus random singles (up to ~20 allowed inside the arena), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
 
 Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
 
