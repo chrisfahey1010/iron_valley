@@ -87,6 +87,7 @@ export class Tank {
     };
     const turretNode = findByName('Tank_Turret');
     const gunNode = findByName('Tank_Gun');
+    this.gunNode = gunNode;
 
     // normalize size/grounding
     wrapper.scale.setScalar(1);
@@ -127,8 +128,15 @@ export class Tank {
       this.turretGroup.position.copy(pivot);
       this.turretGroup.attach(turretNode);
       this.turretGroup.attach(gunNode);
+      // dedicated barrel pivot: pitch only the gun, not the turret shell
+      this.barrelPivot = new THREE.Group();
+      this.barrelPivot.position.copy(gunNode.position); // wrapper-scaled local coords inside turretGroup
+      this.turretGroup.add(this.barrelPivot);
+      this.barrelPivot.attach(gunNode);
+      this.gunNode = gunNode;
     } else {
       this.turretGroup = null;
+      this.barrelPivot = null;
     }
 
     // muzzle tip: far end of gun's long axis, farthest from turret pivot
@@ -161,6 +169,25 @@ export class Tank {
       this.group.add(this.muzzle);
     }
 
+    // compute the true lateral pitch axis (in turret-local space) from the
+    // actual muzzle direction — the gun node has non-identity rotation/scale,
+    // so turret-local X is NOT the correct pivot axis.
+    if (gunNode) {
+      this.turretGroup.updateWorldMatrix(true, true);
+      const turretQ = new THREE.Quaternion();
+      this.turretGroup.getWorldQuaternion(turretQ);
+      const turretPos = new THREE.Vector3();
+      this.turretGroup.getWorldPosition(turretPos);
+      const muzzlePos = new THREE.Vector3();
+      this.muzzle.getWorldPosition(muzzlePos);
+      const D = muzzlePos.sub(turretPos).applyQuaternion(turretQ.invert()).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      this.barrelAxis = new THREE.Vector3().crossVectors(D, up);
+      if (this.barrelAxis.lengthSq() < 1e-6) this.barrelAxis.set(1, 0, 0);
+      else this.barrelAxis.normalize();
+    } else {
+      this.barrelAxis = null;
+    }
     // muzzle flash (hidden) as child of muzzle — scale it so it renders ~0.5 units regardless of model scale
     // note: gBbox/gSize were computed BEFORE this block; guard for the no-gun fallback where gunNode is null
     const flash = new THREE.Mesh(
@@ -219,6 +246,7 @@ export class Tank {
   setPose(dt, motion) {
     const gy = terrainHeight(this.pos.x, this.pos.z);
     this.pos.y = gy;
+    this.group.rotation.order = 'YXZ'; // yaw -> pitch -> roll
     this.group.position.set(this.pos.x, gy, this.pos.z);
     this.group.rotation.y = this.heading;
     const e = 1.4;
@@ -226,11 +254,11 @@ export class Tank {
     const hB = terrainHeight(this.pos.x - Math.sin(this.heading) * e, this.pos.z - Math.cos(this.heading) * e);
     const hL = terrainHeight(this.pos.x + Math.cos(this.heading) * e, this.pos.z - Math.sin(this.heading) * e);
     const hR = terrainHeight(this.pos.x - Math.cos(this.heading) * e, this.pos.z + Math.sin(this.heading) * e);
-    this.group.rotation.x = Math.atan2(hF - hB, 2 * e) * 0.8;
-    this.group.rotation.z = Math.atan2(hR - hL, 2 * e) * 0.8 + this.wreckTilt;
-    if (this.turretGroup) {
-      this.turretGroup.rotation.y = this.turretLocalYaw;
-      this.turretGroup.rotation.x = -this.barrelPitch; // subtle pitch roll on turret
+    this.group.rotation.x = Math.atan2(hB - hF, 2 * e) * 0.8;
+    this.group.rotation.z = Math.atan2(hL - hR, 2 * e) * 0.8 + this.wreckTilt;
+    if (this.turretGroup) this.turretGroup.rotation.y = this.turretLocalYaw;
+    if (this.barrelPivot && this.barrelAxis) {
+      this.barrelPivot.quaternion.setFromAxisAngle(this.barrelAxis, this.barrelPitch);
     }
     // drive clip + mixer
     this.setMotion(motion);

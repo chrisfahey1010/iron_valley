@@ -61,3 +61,10 @@ Collision radius is derived per-tank via `tankRadius(lengthM)`. Camera distances
 - Hull local forward = +Z, up = +Y. Hull yaw θ → world forward `(sinθ, 0, cosθ)`.
 - `A` increases hull yaw (nose to player's left when viewed from behind); `D` decreases it.
 - Barrel pitch is stored as a world-space angle; the turret's loaded rotation is relative to the hull, so aim stays fixed in world space while the hull turns.
+
+## Tank rig orientation
+
+- Hull pose uses `rotation.order = 'YXZ'` (yaw → pitch → roll). Pitch/roll come from terrain height samples (nose/tail, left/right) along the heading, with the forward/up signs chosen so the nose rises up a slope; side slopes roll the tank toward the lower side.
+- Turret carries only yaw (`turretLocalYaw`); it does NOT pitch.
+- Barrel pitch is applied on a dedicated `barrelPivot` group hinged at the gun node's pivot. The pivot axis is derived at load time from the actual muzzle direction (`cross(muzzleDir, up)`) because the GLB's long axis is not axis-aligned — never pitch the gun about the turret's local X. Positive `barrelPitch` raises the tip.
+- Aim/world-space direction stays fixed while the hull turns because turret yaw is stored relative to the hull.
