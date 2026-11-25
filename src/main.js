@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
 import { Tank, loadTankModels } from './tank.js';
+import { tankStats } from './tank_stats.js';
 import { loadTreeModel, placeTrees } from './tree.js';
 import { loadFarmhouseModel, placeFarmhouses } from './farmhouse.js';
 import { createGrass } from './grass.js';
@@ -25,7 +26,7 @@ const $ = id => document.getElementById(id);
 const canvas = $('game-canvas');
 const menuOverlay = $('menu-overlay');
 const endOverlay = $('end-overlay');
-const boreReticle = $('bore-reticle');
+const aimIndicator = $('aim-indicator');
 const impactMarker = $('impact-marker');
 const pauseOverlay = $('pause-overlay');
 
@@ -126,7 +127,10 @@ let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before
 let grass = null;              // instanced grass tufts (see grass.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
-let aimYaw = SPAWN_HEADING, aimPitch = 0.12;
+let aimYaw = SPAWN_HEADING, aimPitch = -0.03;
+const AIM_DIST = 100;        // max distance used when aim ray misses terrain (sky aim)
+const AIM_MAX = 1500;        // max march distance for terrain intersection
+const _aimPoint = new THREE.Vector3();
 let camYaw = SPAWN_HEADING;
 let startTime = 0, frameId = null, lastTime = 0;
 const keys = new Set();
@@ -169,9 +173,24 @@ function resetMatch() {
     player = makePlayer();
     enemies = makeEnemies();
     aimYaw = SPAWN_HEADING;
-    aimPitch = 0.12;
+    // spawn aim: green indicator points at the ground ~100 m ahead of the player
+    const f = new THREE.Vector3(Math.sin(SPAWN_HEADING), 0, Math.cos(SPAWN_HEADING));
+    const aimDist = 100;
+    const ax = player.pos.x + f.x * aimDist, az = player.pos.z + f.z * aimDist;
+    const groundY = terrainHeight(ax, az);
+    const eyeY = player.pos.y + 1.5;
+    aimPitch = Math.atan2(groundY - eyeY, aimDist);
+    aimPitch = THREE.MathUtils.clamp(aimPitch, player.stats.pitchMin, player.stats.pitchMax);
+    player.barrelPitch = aimPitch;
+    player.turretLocalYaw = aimYaw - player.heading;
     for (const e of enemies) {
       e.turretLocalYaw = Math.PI - e.heading; // roughly face player
+      // aim at the player immediately (gravity-corrected like AI)
+      const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+      const t = Math.hypot(dx, dz);
+      const dy = (player.pos.y + 1.4) - (e.pos.y + 1.5);
+      const drop = 0.5 * GRAVITY * (t / SHELL_SPEED) * (t / SHELL_SPEED);
+      e.barrelPitch = THREE.MathUtils.clamp(Math.atan2(dy + drop, t), e.stats.pitchMin, e.stats.pitchMax);
       e.aiState = { moveDir: Math.random() < 0.5 ? -1 : 1, repickTimer: Math.random() * 2 };
     }
     player.alive = true;
@@ -228,7 +247,8 @@ canvas.addEventListener('mousedown', e => {
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas || state !== 'playing') return;
   aimYaw -= e.movementX * 0.0022;
-  aimPitch = THREE.MathUtils.clamp(aimPitch + e.movementY * 0.0022 * -1, -0.35, 1.05);
+  const pStats = player ? tankStats(player.modelKey) : tankStats('tank_6');
+  aimPitch = THREE.MathUtils.clamp(aimPitch + e.movementY * 0.0022 * -1, pStats.pitchMin, pStats.pitchMax);
 });
 
 $('start-btn').addEventListener('click', () => {
@@ -269,6 +289,26 @@ function tryFire(tank) {
   playShellFireAt(_muzzle.clone(), camera.position);
 }
 
+// Aim point in world space: where the mouse aim ray hits the terrain (or a
+// fixed distance out if it misses — i.e. sky aim). Green ring = this point.
+function getAimPoint() {
+  const dir = new THREE.Vector3(
+    Math.sin(aimYaw) * Math.cos(aimPitch),
+    Math.sin(aimPitch),
+    Math.cos(aimYaw) * Math.cos(aimPitch)
+  );
+  const sy = player.pos.y + 1.5;
+  for (let d = 2; d <= AIM_MAX; d += 4) {
+    const x = player.pos.x + dir.x * d;
+    const y = sy + dir.y * d;
+    const z = player.pos.z + dir.z * d;
+    if (y <= terrainHeight(x, z)) {
+      return _aimPoint.set(x, terrainHeight(x, z), z);
+    }
+  }
+  return _aimPoint.copy(player.pos).addScaledVector(dir, AIM_DIST);
+}
+
 // ---------- HUD ----------
 function updateHUD() {
   $('enemies-left-count').textContent = String(enemies.filter(e => e.alive).length);
@@ -287,25 +327,15 @@ function projectToScreen(worldPos) {
 }
 
 function updateCues() {
-  if (!player || !player.alive) { boreReticle.style.display = 'none'; impactMarker.style.display = 'none'; return; }
-  // bore reticle: where the barrel axis intersects the terrain
+  if (!player || !player.alive) { aimIndicator.style.display = 'none'; impactMarker.style.display = 'none'; return; }
+  // green ring: mouse-controlled aim indicator (camera follows it)
+  const ap = projectToScreen(getAimPoint());
+  if (ap) { aimIndicator.style.display = 'block'; aimIndicator.style.left = ap.x + 'px'; aimIndicator.style.top = ap.y + 'px'; }
+  else aimIndicator.style.display = 'none';
+
+  // yellow ring: predicted first-impact point from the actual barrel
   player.muzzleWorldPos(_muzzle);
   const dir = player.barrelWorldDir();
-  const borePoint = _muzzle.clone();
-  {
-    const step = 4;
-    let marched = false;
-    for (let d = 0; d <= 1200; d += step) {
-      const q = _muzzle.clone().addScaledVector(dir, d);
-      if (q.y <= terrainHeight(q.x, q.z)) { borePoint.copy(q); marched = true; break; }
-    }
-    if (!marched) borePoint.copy(_muzzle.clone().addScaledVector(dir, 1200));
-  }
-  const bp = projectToScreen(borePoint);
-  if (bp) { boreReticle.style.display = 'block'; boreReticle.style.left = bp.x + 'px'; boreReticle.style.top = bp.y + 'px'; }
-  else boreReticle.style.display = 'none';
-
-  // predicted impact
   const pred = predictPath({ muzzle: _muzzle, dir, tanks: enemies.filter(e => e.alive) });
   // ensure owner (player) not counted as hit for the player's own aim — filter
   if (pred && pred.hitTank !== player) {
@@ -347,19 +377,15 @@ function updateEnemy(e, dt) {
   e.pos.z += f.z * e.speed * dt;
   resolveObstacles(e.pos, e.collisionRadius);
 
-  // turret tracks player
+  // turret/barrel track the player at limited rate (same model as player)
   const tYaw = toPlayer; // world heading toward player
-  let tDiff = tYaw - (e.heading + e.turretLocalYaw);
-  while (tDiff > Math.PI) tDiff -= Math.PI * 2;
-  while (tDiff < -Math.PI) tDiff += Math.PI * 2;
-  e.turretLocalYaw += THREE.MathUtils.clamp(tDiff, -2.6 * dt, 2.6 * dt);
-  // barrel pitch toward player
   const t = Math.hypot(dx, dz);
   const dy = (player.pos.y + 1.4) - (e.pos.y + 1.5);
   // gravity correction: aim slightly above the line to the target
   const drop = 0.5 * GRAVITY * (t / SHELL_SPEED) * (t / SHELL_SPEED);
   const ang = Math.atan2(dy + drop, t);
-  e.barrelPitch += (THREE.MathUtils.clamp(ang, -0.2, 0.6) - e.barrelPitch) * Math.min(1, dt * 4);
+  e.trackAim(tYaw, ang, dt);
+  const tDiff = (() => { let d = tYaw - (e.heading + e.turretLocalYaw); while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; })();
 
   // fire when roughly aimed and in range
   e.reload = Math.max(0, e.reload - dt);
@@ -414,9 +440,13 @@ function update(dt) {
     player.pos.z += f.z * player.speed * dt;
     resolveObstacles(player.pos, player.collisionRadius);
 
-    // turret aims to aimYaw (world), pitch
-    player.turretLocalYaw = aimYaw - player.heading;
-    player.barrelPitch = aimPitch;
+    // turret/barrel track the mouse-controlled aim point (terrain intersection)
+    const aimPoint = getAimPoint();
+    const dx = aimPoint.x - player.pos.x, dz = aimPoint.z - player.pos.z;
+    const dy = aimPoint.y - (player.pos.y + 1.5);
+    const targetYaw = Math.atan2(dx, dz);
+    const targetPitch = Math.atan2(dy, Math.hypot(dx, dz));
+    player.trackAim(targetYaw, targetPitch, dt);
     player.reload = Math.max(0, player.reload - dt);
     tickMuzzleFlash(player, dt);
   }
@@ -469,8 +499,9 @@ function updateCamera() {
   const desired = new THREE.Vector3(player.pos.x, 0, player.pos.z).add(back);
   desired.y = terrainHeight(desired.x, desired.z) + CAM_HEIGHT;
   const gy = terrainHeight(player.pos.x, player.pos.z);
-  const look = new THREE.Vector3(player.pos.x, gy + 1.6, player.pos.z)
-    .add(new THREE.Vector3(Math.sin(camYaw), 0, Math.cos(camYaw)).multiplyScalar(8));
+  // look at the mouse-controlled aim point (full 3D aim in War Thunder style)
+  const look = getAimPoint().clone();
+  look.y = Math.max(look.y, gy + 1.2);
   camera.position.lerp(desired, 0.55);
   camera.lookAt(look);
   // keep above terrain

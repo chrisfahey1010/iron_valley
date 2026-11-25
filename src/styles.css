@@ -14,8 +14,8 @@ html,body { margin:0; height:100%; overflow:hidden; background:#0b0e11; font-fam
 #reload-bar { height:100%; width:100%; background:var(--accent); }
 #controls-hint { position:absolute; bottom:16px; left:0; right:0; text-align:center; font-size:11px; color:#cfc8b9; opacity:.75; letter-spacing:.05em; text-shadow:0 1px 2px #000; }
 .cue { position:absolute; transform:translate(-50%,-50%); pointer-events:none; }
-#bore-reticle { width:14px; height:14px; border:2px solid rgba(90,220,120,.95); border-radius:50%; box-shadow:0 0 4px rgba(0,0,0,.8); }
-#bore-reticle::after { content:''; position:absolute; left:50%; top:50%; width:2px; height:2px; background:#5ade78; border-radius:50%; transform:translate(-50%,-50%); }
+#aim-indicator { width:14px; height:14px; border:2px solid rgba(90,220,120,.95); border-radius:50%; box-shadow:0 0 4px rgba(0,0,0,.8); }
+#aim-indicator::after { content:''; position:absolute; left:50%; top:50%; width:2px; height:2px; background:#5ade78; border-radius:50%; transform:translate(-50%,-50%); }
 #impact-marker { width:20px; height:20px; }
 #impact-marker::before { content:''; position:absolute; inset:0; border:2px dashed #ffcf5a; border-radius:50%; animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{ transform:scale(.9); opacity:1;} 50%{ transform:scale(1.25); opacity:.6;} }

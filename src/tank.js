@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { terrainHeight } from './world.js';
 import { ASSETS, tankRadius } from './scale.js';
+import { tankStats } from './tank_stats.js';
 
 export const TANK_MODELS = Object.fromEntries(
   Object.entries(ASSETS).filter(([, a]) => a.kind === 'tank').map(([k, a]) => [k, a.url])
@@ -50,6 +51,7 @@ export class Tank {
     this.lengthM = lengthM ?? ASSETS[modelKey]?.lengthM ?? 6;
     this.collisionRadius = tankRadius(this.lengthM);
     this.isPlayer = isPlayer;
+    this.stats = tankStats(modelKey);
     this.maxHp = 100;
     this.hp = this.maxHp;
     this.pos = new THREE.Vector3(x, 0, z);
@@ -241,6 +243,22 @@ export class Tank {
     if (this.activeClip) this.activeClip.fadeOut(0.18);
     if (next) { next.reset().play(); next.fadeIn(0.18); }
     this.activeClip = next;
+  }
+
+  // Limited-rate aiming: turret/barrel converge toward a desired world yaw
+  // and elevation. Rate-limited per TANK_STATS; pitch clamped to limits.
+  trackAim(targetYawWorld, targetPitch, dt) {
+    const s = this.stats;
+    targetPitch = THREE.MathUtils.clamp(targetPitch, s.pitchMin, s.pitchMax);
+    const targetLocal = targetYawWorld - this.heading;
+    let diff = targetLocal - this.turretLocalYaw;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const maxTurn = s.turretRate * dt;
+    this.turretLocalYaw += THREE.MathUtils.clamp(diff, -maxTurn, maxTurn);
+    const maxPitch = s.barrelRate * dt;
+    this.barrelPitch += THREE.MathUtils.clamp(targetPitch - this.barrelPitch, -maxPitch, maxPitch);
+    this.barrelPitch = THREE.MathUtils.clamp(this.barrelPitch, s.pitchMin, s.pitchMax);
   }
 
   setPose(dt, motion) {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-24 — per-vehicle aiming stats + War Thunder-style aiming indicator
+
+- **src/tank_stats.js** (new) — per-vehicle stats keyed by modelKey (M24 Chaffee: 24°/s traverse, 15°/s barrel, pitch −10°…+15°; Panzer IV: 16°/s traverse, 15°/s barrel, pitch −10°…+20°). Exposes `tankStats(modelKey)` for runtime (radians, frozen).
+- **src/tank.js** — new `trackAim(targetYawWorld, targetPitch, dt)`: limited-rate turret/barrel convergence + pitch clamping.
+- **src/main.js** — War Thunder-style aiming: mouse controls a world-space aim point placed where the aim ray hits the terrain (falls back to a fixed ~100 m point on sky aim); the green ring is the indicator (bore ring removed), the yellow ring is the predicted impact from the actual barrel. Camera looks at the indicator. Player and enemy AI both use `trackAim` at the limited rates. Spawn aim: indicator at ground ~100 m ahead (terrain-derived pitch), barrel/turret initialized to match; enemies initialized with a gravity-corrected aim at the player (previously barrels spawned pointing above the horizon with 0.12 rad pitch).
+- **index.html / src/styles.css** — `#bore-reticle` renamed to `#aim-indicator` (green = indicator, yellow = predicted impact).
+- **README.md / AGENTS.md / docs/CHANGELOG.md** — docs updated.
+
 ## 2026-11-24 — real-world shell speed (500 m/s) + gravity (9.81 m/s²)
 
 - **src/shells.js** — `SHELL_SPEED` 46 → **500 m/s** (real-world shell); `GRAVITY` 16 → **9.81 m/s²**. Shell trail shortened 60 → 24 points so the streak doesn't span hundreds of meters.
