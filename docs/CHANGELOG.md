@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-24 — per-vehicle hull steering rate
+
+- **src/tank_stats.js** — new `hullTurnRateDeg` stat per tank (M24 Chaffee 24°/s, Panzer IV 20°/s); exposed as `hullTurnRate` (rad/s).
+- **src/main.js** — player and enemy hull yaw now clamped to `stats.hullTurnRate` (previously `TUNING.player.steerRate` 1.9 rad/s / `TUNING.enemy.steerRate` 1.4 rad/s — ~109°/s and ~80°/s). Reverse-steering 0.7× factor removed: hull rate is uniform at the cap. Unused `steerRate`/`pitchRate` moved out of `TUNING`.
+- **README.md / AGENTS.md** — docs updated.
+
 ## 2026-11-24 — per-vehicle aiming stats + War Thunder-style aiming indicator
 
 - **src/tank_stats.js** (new) — per-vehicle stats keyed by modelKey (M24 Chaffee: 24°/s traverse, 15°/s barrel, pitch −10°…+15°; Panzer IV: 16°/s traverse, 15°/s barrel, pitch −10°…+20°). Exposes `tankStats(modelKey)` for runtime (radians, frozen).

@@ -11,8 +11,8 @@ import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterV
 
 // ---------- tunables ----------
 const TUNING = {
-  player: { accel: 14, maxSpeed: 5.5, reverseSpeed: 3, brake: 22, steerRate: 1.9, pitchRate: 1.9 },
-  enemy:  { speed: 2.75, steerRate: 1.4, fireRange: 34, fireTimerMin: 1.6, fireTimerMax: 3.0, damage: 12 },
+  player: { accel: 14, maxSpeed: 5.5, reverseSpeed: 3, brake: 22 },
+  enemy:  { speed: 2.75, fireRange: 34, fireTimerMin: 1.6, fireTimerMax: 3.0, damage: 12 },
   enemyCount: 4,
   shellPlayerDamage: 26,
   playerReload: 0.9,
@@ -365,7 +365,7 @@ function updateEnemy(e, dt) {
   let diff = desired - e.heading;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  const maxTurn = TUNING.enemy.steerRate * dt;
+  const maxTurn = e.stats.hullTurnRate * dt;
   const applied = THREE.MathUtils.clamp(diff, -maxTurn, maxTurn);
   e.headingDelta = Math.abs(applied) > 0.001 ? Math.sign(applied) : 0;
   e.heading += applied;
@@ -410,9 +410,8 @@ function update(dt) {
   if (player.alive) {
     const steer = (keys.has('KeyA') ? 1 : 0) - (keys.has('KeyD') ? 1 : 0);
     // A = left = increasing heading (verified). D = right.
-    const steerRate = (player.speed >= 0 ? TUNING.player.steerRate : TUNING.player.steerRate * 0.7);
     player.headingDelta = steer;
-    player.heading += steer * steerRate * dt;
+    player.heading += steer * player.stats.hullTurnRate * dt;
 
     const forward = keys.has('KeyW') ? 1 : 0;
     const back = keys.has('KeyS') ? 1 : 0;

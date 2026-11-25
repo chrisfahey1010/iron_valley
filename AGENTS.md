@@ -18,7 +18,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 ## Module map (`src/`)
 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
-- `tank_stats.js` — per-vehicle aiming stats (turret/barrel rate, pitch min/max), keyed by modelKey; consumed by tank.js `trackAim` and by the player/AI aim code in main.js. Add new vehicles here.
+- `tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch min/max), keyed by modelKey; consumed by tank.js `trackAim` and by the player/AI aim code in main.js. Add new vehicles here.
 - `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
 - `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
@@ -34,7 +34,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - Hull local forward = +Z, up = +Y. Hull yaw θ → world forward `(sinθ, 0, cosθ)`.
 - `A` increases hull yaw (nose left viewed from behind); `D` decreases it.
 - Barrel pitch stored in world space; turret's loaded rotation is relative to the hull, so aim stays fixed in world space while the hull turns.
-- Aiming: the mouse controls a world-space aim point placed where the aim ray intersects the terrain (fixed ~100 m point on sky aim), rendered as the green ring; the camera follows it. Turret and barrel track the indicator at per-vehicle limited rates (src/tank_stats.js), with per-tank pitch limits. The yellow dashed ring is the predicted first-impact point from the actual barrel (recomputed per frame; 500 m/s, 9.81 m/s²). Enemy AI uses the same limited-rate tracking. Spawn: indicator at ground ~100 m ahead, barrel/turret initialized to match.
+- Hull steering, turret and barrel all rate-limit per vehicle (tank_stats.js: hullTurnRateDeg): M24 Chaffee 24°/s, Panzer IV 20°/s. Aiming: the mouse controls a world-space aim point placed where the aim ray intersects the terrain (fixed ~100 m point on sky aim), rendered as the green ring; the camera follows it. Turret and barrel track the indicator at per-vehicle limited rates (src/tank_stats.js), with per-tank pitch limits. The yellow dashed ring is the predicted first-impact point from the actual barrel (recomputed per frame; 500 m/s, 9.81 m/s²). Enemy AI uses the same limited-rate tracking. Spawn: indicator at ground ~100 m ahead, barrel/turret initialized to match.
 - Fully self-contained: Three.js only, no external assets/network.
 
 ## Pitfalls

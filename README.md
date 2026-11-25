@@ -32,7 +32,7 @@ Start screen: click **START MISSION**. The start click captures the mouse and do
 
 Spawn aim: the player's green indicator is placed at the terrain intersection ~100 m ahead of the spawn nose (pitch computed from the actual terrain, clamped to stats), and the barrel/turret are initialized to match — no above-horizon barrel at spawn. Enemies also initialize their barrel to a gravity-corrected aim at the player.
 
-Aiming (War Thunder style): the mouse controls the **green ring** — the aiming indicator, placed where the mouse aim ray intersects the terrain (a fixed ~100 m point along the ray when the ray misses terrain, i.e. sky aim), which the camera follows. The turret and barrel converge toward the indicator at per-vehicle limited rates (M24 Chaffee: 24°/s traverse, 15°/s barrel; Panzer IV: 16°/s traverse, 15°/s barrel), with pitch limits per tank (M24: -10° to +15°; Panzer IV: -10° to +20°). The **yellow dashed ring** is the predicted first-impact point from the *actual* barrel (recomputed every frame, real-world shell kinematics: 500 m/s, 9.81 m/s²). Enemy aim uses the same gravity-corrected elevation and the same limited-rate tracking. Stats live in `src/tank_stats.js` (keyed by modelKey); add a new vehicle there to get limited-rate aiming automatically.
+Aiming (War Thunder style): the mouse controls the **green ring** — the aiming indicator, placed where the mouse aim ray intersects the terrain (a fixed ~100 m point along the ray when the ray misses terrain, i.e. sky aim), which the camera follows. The turret and barrel converge toward the indicator at per-vehicle limited rates (M24 Chaffee: 24°/s traverse, 15°/s barrel; Panzer IV: 16°/s traverse, 15°/s barrel; hull steering: M24 24°/s, Panzer IV 20°/s), with pitch limits per tank (M24: -10° to +15°; Panzer IV: -10° to +20°). The **yellow dashed ring** is the predicted first-impact point from the *actual* barrel (recomputed every frame, real-world shell kinematics: 500 m/s, 9.81 m/s²). Enemy aim uses the same gravity-corrected elevation and the same limited-rate tracking. Stats live in `src/tank_stats.js` (keyed by modelKey); add a new vehicle there to get limited-rate aiming automatically.
 
 ## Module map
 
@@ -41,14 +41,14 @@ Aiming (War Thunder style): the mouse controls the **green ring** — the aiming
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage, `trackAim()` limited-rate turret/barrel tracking
-- `src/tank_stats.js` — per-vehicle aiming stats (turret/barrel rate, pitch limits), keyed by modelKey
+- `src/tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch limits), keyed by modelKey
 - `src/shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
 - `src/ground.js` — ground-zone classifier (`groundZone`): water / riverbank / spawn / rim / clearing / grass; used by grass scatter
 - `src/grass.js` — instanced crossed-quad grass tufts with wind sway + distance fade; seeded deterministic scatter over the playable bounds. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. No shadows from/onto grass
 - `src/audio.js` — positional shell-fire and impact SFX (speed-of-sound delay + distance attenuation); impact kind derived from shell-impact reason (tank / rock / terrain), variant picked randomly per impact
 - `src/styles.css` — HUD, cues, overlays
 
-Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING` block at the top of `src/main.js`. Per-vehicle aiming stats (turret/barrel rate, pitch limits) live in `src/tank_stats.js`.
+Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING` block at the top of `src/main.js`. Per-vehicle stats (turret/barrel rate, hull steering rate, pitch limits) live in `src/tank_stats.js`.
 
 ## World scale (meters)
 

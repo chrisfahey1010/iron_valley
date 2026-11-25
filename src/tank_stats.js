@@ -10,6 +10,7 @@ export const TANK_STATS = {
     name: 'M24 Chaffee',
     turretRateDeg: 24,      // max turret traverse rate (deg/s)
     barrelRateDeg: 15,      // max barrel elevation rate (deg/s)
+    hullTurnRateDeg: 24,    // max hull yaw rate while steering (deg/s)
     pitchMinDeg: -10,       // lowest barrel elevation (deg)
     pitchMaxDeg: 15,        // highest barrel elevation (deg)
   },
@@ -17,6 +18,7 @@ export const TANK_STATS = {
     name: 'Panzer IV',
     turretRateDeg: 16,
     barrelRateDeg: 15,
+    hullTurnRateDeg: 20,
     pitchMinDeg: -10,
     pitchMaxDeg: 20,
   },
@@ -30,6 +32,7 @@ export const TANK_STATS_R = Object.fromEntries(
     name: s.name,
     turretRate: toRad(s.turretRateDeg),
     barrelRate: toRad(s.barrelRateDeg),
+    hullTurnRate: toRad(s.hullTurnRateDeg),
     pitchMin: toRad(s.pitchMinDeg),
     pitchMax: toRad(s.pitchMaxDeg),
   })])
