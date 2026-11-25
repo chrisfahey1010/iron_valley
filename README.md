@@ -11,7 +11,7 @@ npm run build    # production build into dist/
 npm run preview  # serve the production build
 ```
 
-Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Grass is instanced tufts (`src/grass.js`, ~60k, crossed quads with per-instance tint + wind sway) over the terrain's tiled grass ground texture; tunables at the top of `src/grass.js`. Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3). Shell-fire SFX: `public/audio/shell-fire.mp3` (Stable Audio 3, One-shot). Impact SFX: `public/audio/impact-{tank,terrain,rock}-{a,b}.mp3` (Stable Audio 3, One-shot, randomized per impact).
+Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Grass is instanced tufts (`src/grass.js`, ~120k, crossed quads with per-instance tint + wind sway; uniform 0.5–1.0 m scale, fade 120–400 m) over the terrain's tiled grass ground texture; tunables at the top of `src/grass.js`. Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3). Shell-fire SFX: `public/audio/shell-fire.mp3` (Stable Audio 3, One-shot). Impact SFX: `public/audio/impact-{tank,terrain,rock}-{a,b}.mp3` (Stable Audio 3, One-shot, randomized per impact).
 
 ## Controls
 

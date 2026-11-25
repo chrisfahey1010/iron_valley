@@ -4,13 +4,11 @@ import { terrainHeight, PLAY_BOUND } from './world.js';
 import { groundZone } from './ground.js';
 
 // ---- tunables ----
-const TUFT_COUNT = 60000;
-const TUFT_SIZE = 1.15;          // base width/height of a tuft (m)
-const MIN_SCALE = 0.7, MAX_SCALE = 1.5;
+const TUFT_COUNT = 120000;
 const WIND_STRENGTH = 0.28;      // max sideways displacement at tips (m)
 const WIND_FREQ = 2.1;
-const FADE_START = 60;           // start fading (m)
-const FADE_END = 200;            // discarded beyond this (m)
+const FADE_START = 120;           // start fading (m)
+const FADE_END = 400;            // discarded beyond this (m)
 const ALPHA_FADE = 0.12;         // discard threshold
 const SEED = 4242;               // deterministic scatter
 // brightness/tint multipliers applied on top of the blade texture
@@ -144,18 +142,18 @@ diffuseColor.rgb *= vTint;`
     const z = (rng() * 2 - 1) * PLAY_BOUND;
     if (groundZone(x, z) !== 'grass') continue;
     const y = terrainHeight(x, z);
-    const s = MIN_SCALE + rng() * (MAX_SCALE - MIN_SCALE);
+    const s = 0.5 + rng() * 0.5;  // uniform 0.5–1.0 m
     dummy.position.set(x, y - 0.05, z);
     dummy.rotation.set(0, rng() * Math.PI * 2, 0);
-    dummy.scale.set(TUFT_SIZE * s, TUFT_SIZE * s * (0.85 + rng() * 0.4), TUFT_SIZE * s);
+    dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     mesh.setMatrixAt(placed, dummy.matrix);
     phase[placed] = rng() * Math.PI * 2;
     const t = rng();
     const c = COLOR_LO.clone().lerp(COLOR_HI, t);
     // subtle darkening with height (dry high ground)
-    const h = Math.min(1, Math.max(0, (y + 2) / 10));
-    c.multiplyScalar(1 - h * 0.18);
+    const heightFactor = Math.min(1, Math.max(0, (y + 2) / 10));
+    c.multiplyScalar(1 - heightFactor * 0.18);
     tint[placed * 3] = c.r; tint[placed * 3 + 1] = c.g; tint[placed * 3 + 2] = c.b;
     placed++;
   }
