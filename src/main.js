@@ -5,7 +5,7 @@ import { Tank, loadTankModels } from './tank.js';
 import { loadTreeModel, placeTrees } from './tree.js';
 import { loadFarmhouseModel, placeFarmhouses } from './farmhouse.js';
 import { createGrass } from './grass.js';
-import { Shell, predictPath, SHELL_SPEED } from './shells.js';
+import { Shell, predictPath, SHELL_SPEED, GRAVITY } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
 // ---------- tunables ----------
@@ -288,10 +288,19 @@ function projectToScreen(worldPos) {
 
 function updateCues() {
   if (!player || !player.alive) { boreReticle.style.display = 'none'; impactMarker.style.display = 'none'; return; }
-  // bore reticle: muzzle + forward*30
+  // bore reticle: where the barrel axis intersects the terrain
   player.muzzleWorldPos(_muzzle);
   const dir = player.barrelWorldDir();
-  const borePoint = _muzzle.clone().addScaledVector(dir, 30);
+  const borePoint = _muzzle.clone();
+  {
+    const step = 4;
+    let marched = false;
+    for (let d = 0; d <= 1200; d += step) {
+      const q = _muzzle.clone().addScaledVector(dir, d);
+      if (q.y <= terrainHeight(q.x, q.z)) { borePoint.copy(q); marched = true; break; }
+    }
+    if (!marched) borePoint.copy(_muzzle.clone().addScaledVector(dir, 1200));
+  }
   const bp = projectToScreen(borePoint);
   if (bp) { boreReticle.style.display = 'block'; boreReticle.style.left = bp.x + 'px'; boreReticle.style.top = bp.y + 'px'; }
   else boreReticle.style.display = 'none';
@@ -346,8 +355,11 @@ function updateEnemy(e, dt) {
   e.turretLocalYaw += THREE.MathUtils.clamp(tDiff, -2.6 * dt, 2.6 * dt);
   // barrel pitch toward player
   const t = Math.hypot(dx, dz);
-  const ang = Math.atan2((player.pos.y + 1.4) - (e.pos.y + 1.4), t);
-  e.barrelPitch += (THREE.MathUtils.clamp(ang + 0.12, -0.2, 0.6) - e.barrelPitch) * Math.min(1, dt * 4);
+  const dy = (player.pos.y + 1.4) - (e.pos.y + 1.5);
+  // gravity correction: aim slightly above the line to the target
+  const drop = 0.5 * GRAVITY * (t / SHELL_SPEED) * (t / SHELL_SPEED);
+  const ang = Math.atan2(dy + drop, t);
+  e.barrelPitch += (THREE.MathUtils.clamp(ang, -0.2, 0.6) - e.barrelPitch) * Math.min(1, dt * 4);
 
   // fire when roughly aimed and in range
   e.reload = Math.max(0, e.reload - dt);

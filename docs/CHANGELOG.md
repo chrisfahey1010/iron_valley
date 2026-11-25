@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-24 — real-world shell speed (500 m/s) + gravity (9.81 m/s²)
+
+- **src/shells.js** — `SHELL_SPEED` 46 → **500 m/s** (real-world shell); `GRAVITY` 16 → **9.81 m/s²**. Shell trail shortened 60 → 24 points so the streak doesn't span hundreds of meters.
+- **src/main.js** — Green bore reticle now marches along the barrel axis until it intersects terrain (previously fixed 30 m ahead, misleading vs. the predicted landing point). Enemy aim no longer applies a +0.12 rad upward bias (tuned for slow shells); it now computes a gravity-corrected elevation (`atan2(dy + drop, dist)`, `drop = 0.5·9.81·(d/500)²`).
+- **README.md / AGENTS.md** — Aim-cue and shell-kinematics docs updated.
+
 ## 2026-11-24 — enemy tanks: Panzer IV only
 
 - **src/scale.js** — Removed `tank_1`, `tank_3`, `tank_4` entries (placeholder CC0 assets).

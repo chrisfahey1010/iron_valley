@@ -25,7 +25,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
 - `docs/TANK_RIG_REFERENCE.md` — full rig/animation contract for future Blender-built tanks
-- `shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
+- `shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
 - `styles.css` — HUD, cues, overlays
 
 ## Conventions
@@ -33,7 +33,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - Hull local forward = +Z, up = +Y. Hull yaw θ → world forward `(sinθ, 0, cosθ)`.
 - `A` increases hull yaw (nose left viewed from behind); `D` decreases it.
 - Barrel pitch stored in world space; turret's loaded rotation is relative to the hull, so aim stays fixed in world space while the hull turns.
-- Two aim cues: green ring = actual barrel bore; yellow dashed ring = predicted first-impact point (recomputed per frame, leads moving targets).
+- Two aim cues: green ring = where the barrel axis intersects terrain (bore); yellow dashed ring = predicted first-impact point (recomputed per frame). Both use real-world shell kinematics (500 m/s, 9.81 m/s²); the two nearly coincide.
 - Fully self-contained: Three.js only, no external assets/network.
 
 ## Pitfalls

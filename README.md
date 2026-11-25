@@ -30,7 +30,7 @@ Start screen: click **START MISSION**. The start click captures the mouse and do
 
 `resetMatch()` (R key / restart button / end-of-match restart) is failure-tolerant: shell and tank cleanup, then player/enemy creation, each run in their own guarded block, and a reset that fails surfaces a 'RESTART FAILED' menu instead of a half-reset game. The render loop is also guarded — a throwing frame logs to the console and the loop continues, and a slow frame (>250 ms) logs a `Iron Valley slow frame` stack trace to the console for diagnosis.
 
-Two distinct aim cues: a small **green ring** is where the barrel actually points (bore), a **yellow dashed ring** is the predicted first-impact point (recomputed every frame, lead moving targets).
+Two distinct aim cues: a small **green ring** marks where the barrel axis intersects the terrain (bore), and a **yellow dashed ring** is the predicted first-impact point (recomputed every frame). At 500 m/s with real-world gravity (9.81 m/s²), the two nearly coincide — the yellow ring sits just short of the bore point due to gravity drop. Enemy aim uses the same gravity-corrected elevation (no upward bias).
 
 ## Module map
 
@@ -39,7 +39,7 @@ Two distinct aim cues: a small **green ring** is where the barrel actually point
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage
-- `src/shells.js` — gravity projectiles, segmented collision, trail, impact FX, trajectory prediction
+- `src/shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
 - `src/ground.js` — ground-zone classifier (`groundZone`): water / riverbank / spawn / rim / clearing / grass; used by grass scatter
 - `src/grass.js` — instanced crossed-quad grass tufts with wind sway + distance fade; seeded deterministic scatter over the playable bounds. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. No shadows from/onto grass
 - `src/audio.js` — positional shell-fire and impact SFX (speed-of-sound delay + distance attenuation); impact kind derived from shell-impact reason (tank / rock / terrain), variant picked randomly per impact

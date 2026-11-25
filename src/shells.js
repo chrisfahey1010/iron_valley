@@ -4,8 +4,8 @@ import { terrainHeight, obstacles, WORLD_SIZE } from './world.js';
 
 function logImpact(o){ if (typeof window!=='undefined' && window.__iv) { if (!Array.isArray(window.__iv.impacts)) window.__iv.impacts=[]; window.__iv.impacts.push(o); } }
 
-export const SHELL_SPEED = 46;
-export const GRAVITY = 16;
+export const SHELL_SPEED = 500; // m/s — real-world shell speed
+export const GRAVITY = 9.81; // m/s² — real-world gravity
 
 // Predict a trajectory from a muzzle pose; returns { point, hitTank, hitObstacle } or null.
 export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
@@ -62,7 +62,7 @@ export class Shell {
     );
     scene.add(this.mesh);
     // trail
-    this.trailPositions = new Float32Array(60 * 3);
+    this.trailPositions = new Float32Array(24 * 3);
     this.trailCount = 0;
     const tg = new THREE.BufferGeometry();
     tg.setAttribute('position', new THREE.BufferAttribute(this.trailPositions, 3));
@@ -115,20 +115,20 @@ export class Shell {
     this.pos.copy(next);
     this.mesh.position.copy(this.pos);
     // trail
-    if (this.trailCount < 60) {
+    if (this.trailCount < 24) {
       this.trailPositions[this.trailCount * 3] = this.pos.x;
       this.trailPositions[this.trailCount * 3 + 1] = this.pos.y;
       this.trailPositions[this.trailCount * 3 + 2] = this.pos.z;
       this.trailCount++;
     } else {
-      for (let i = 0; i < 59; i++) {
+      for (let i = 0; i < 23; i++) {
         this.trailPositions[i * 3] = this.trailPositions[(i + 1) * 3];
         this.trailPositions[i * 3 + 1] = this.trailPositions[(i + 1) * 3 + 1];
         this.trailPositions[i * 3 + 2] = this.trailPositions[(i + 1) * 3 + 2];
       }
-      this.trailPositions[59 * 3] = this.pos.x;
-      this.trailPositions[59 * 3 + 1] = this.pos.y;
-      this.trailPositions[59 * 3 + 2] = this.pos.z;
+      this.trailPositions[23 * 3] = this.pos.x;
+      this.trailPositions[23 * 3 + 1] = this.pos.y;
+      this.trailPositions[23 * 3 + 2] = this.pos.z;
     }
     this.trail.geometry.setDrawRange(0, this.trailCount);
     this.trail.geometry.attributes.position.needsUpdate = true;
