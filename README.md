@@ -2,6 +2,10 @@
 
 Low-poly 3D tank valley in the browser — a 1 km x 1 km world with a winding river and a placeholder bridge. Take the valley, destroy all enemy armor.
 
+## Level editor & level file
+
+`npm run dev` serves both the game (`/`) and the level editor (`/editor.html`). The editor paints terrain regions (pasture/crops/clearing), gravel/dirt roads, places/moves/rotates/deletes objects (trees, farmhouses) and spawns (player + enemies), and Save overwrites `public/level.json` (dev: in-place POST; static build: download). `public/level.json` is the source of truth — agents can edit it directly. Coordinates: x east, z south, origin at world center, 1 unit = 1 m.
+
 ## Setup & run
 
 ```bash

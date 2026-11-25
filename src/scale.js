@@ -12,10 +12,14 @@
 import * as THREE from 'three';
 
 export const ASSETS = {
-  tank_6:             { url: 'models/tank_6_m24_chaffee.glb', kind: 'tank', lengthM: 5 },
-  tank_5:             { url: 'models/tank_5_panzer_iv.glb', kind: 'tank', lengthM: 6 },
-  tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10 },
-  farmhouse:          { url: 'models/farmhouse.glb', kind: 'props', lengthM: 14 },
+  tank_6:             { url: 'models/tank_6_m24_chaffee.glb', kind: 'tank', lengthM: 5,
+                        editor: { category: 'vehicle', footprintR: 2.4, collidable: true, color: '#4a6b4a' } },
+  tank_5:             { url: 'models/tank_5_panzer_iv.glb', kind: 'tank', lengthM: 6,
+                        editor: { category: 'vehicle', footprintR: 2.9, collidable: true, color: '#5a4a6b' } },
+  tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10,
+                        editor: { category: 'object', footprintR: 0.9, collidable: true, color: '#3a6b3f' } },
+  farmhouse:          { url: 'models/farmhouse.glb', kind: 'props', lengthM: 14,
+                        editor: { category: 'object', footprintR: 7, collidable: true, color: '#8a5a3b' } },
 };
 
 export const DEFAULT_TANK_LENGTH = 6; // meters

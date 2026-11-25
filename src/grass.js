@@ -53,7 +53,7 @@ function buildTuftGeometry() {
   return g;
 }
 
-export function createGrass(scene) {
+export function createGrass(scene, level = null) {
   const bladeTex = new THREE.TextureLoader().load('/textures/grass_blade.png');
   bladeTex.anisotropy = 4;
   bladeTex.colorSpace = THREE.SRGBColorSpace;
@@ -140,7 +140,7 @@ diffuseColor.rgb *= vTint;`
   while (placed < count && guard++ < maxAttempts) {
     const x = (rng() * 2 - 1) * PLAY_BOUND;
     const z = (rng() * 2 - 1) * PLAY_BOUND;
-    if (groundZone(x, z) !== 'grass') continue;
+    if (groundZone(x, z, level) !== 'grass') continue;
     const y = terrainHeight(x, z);
     const s = 0.5 + rng() * 0.5;  // uniform 0.5–1.0 m
     dummy.position.set(x, y - 0.05, z);

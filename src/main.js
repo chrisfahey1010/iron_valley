@@ -1,10 +1,10 @@
 // Iron Valley — startup, match state, input, camera, AI, HUD, game loop.
 import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
+import { loadLevel, validateLevel } from './level.js';
+import { loadObjectSources, placeObjects } from './objects.js';
 import { Tank, loadTankModels } from './tank.js';
 import { tankStats } from './tank_stats.js';
-import { loadTreeModel, placeTrees } from './tree.js';
-import { loadFarmhouseModel, placeFarmhouses } from './farmhouse.js';
 import { createGrass } from './grass.js';
 import { Shell, predictPath, SHELL_SPEED, GRAVITY } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
@@ -120,10 +120,11 @@ sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
 sun.shadow.camera.far = 400;
 scene.add(sun);
 
-buildWorld(scene);
+// NOTE: buildWorld/grass/objects are built inside init() after level load.
 
 // ---------- state ----------
 let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before match start
+let level = null;              // validated level.json (see src/level.js)
 let grass = null;              // instanced grass tufts (see grass.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
@@ -136,17 +137,24 @@ let startTime = 0, frameId = null, lastTime = 0;
 const keys = new Set();
 const clockStart = performance.now();
 
+function playerSpawn() {
+  return level?.spawns?.player ?? { x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING };
+}
+
 function makePlayer() {
-  return new Tank({ modelKey: 'tank_6', x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING, isPlayer: true, scene, models });
+  const sp = playerSpawn();
+  return new Tank({ modelKey: 'tank_6', x: sp.x, z: sp.z, heading: sp.heading, isPlayer: true, scene, models });
 }
 
 function makeEnemies() {
-  const spots = [
-    { x: -120, z: -260, heading: Math.PI },
-    { x: -20,  z: -230, heading: Math.PI },
-    { x: -110, z: -180, heading: Math.PI / 2 },
-    { x: -30,  z: -160, heading: -Math.PI / 2 },
-  ];
+  const spots = level?.spawns?.enemies?.length
+    ? level.spawns.enemies
+    : [
+      { x: -120, z: -260, heading: Math.PI },
+      { x: -20,  z: -230, heading: Math.PI },
+      { x: -110, z: -180, heading: Math.PI / 2 },
+      { x: -30,  z: -160, heading: -Math.PI / 2 },
+    ];
   const enemyModel = 'tank_5'; // all enemies are Panzer IVs for now
   return spots.slice(0, TUNING.enemyCount).map((s) =>
     new Tank({ modelKey: enemyModel, x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
@@ -172,9 +180,10 @@ function resetMatch() {
   try {
     player = makePlayer();
     enemies = makeEnemies();
-    aimYaw = SPAWN_HEADING;
+    const sp0 = playerSpawn();
+    aimYaw = sp0.heading;
     // spawn aim: green indicator points at the ground ~100 m ahead of the player
-    const f = new THREE.Vector3(Math.sin(SPAWN_HEADING), 0, Math.cos(SPAWN_HEADING));
+    const f = new THREE.Vector3(Math.sin(sp0.heading), 0, Math.cos(sp0.heading));
     const aimDist = 100;
     const ax = player.pos.x + f.x * aimDist, az = player.pos.z + f.z * aimDist;
     const groundY = terrainHeight(ax, az);
@@ -194,7 +203,7 @@ function resetMatch() {
       e.aiState = { moveDir: Math.random() < 0.5 ? -1 : 1, repickTimer: Math.random() * 2 };
     }
     player.alive = true;
-    camYaw = SPAWN_HEADING;
+    camYaw = sp0.heading;
   } catch (err) {
     // A reset failure must not leave the game in a frozen/half-reset state.
     console.error('resetMatch failed, recovering', err);
@@ -558,14 +567,12 @@ const menuTitle = document.querySelector('#menu-overlay h1, #menu-overlay .title
 if (menuTitle) menuTitle.textContent = 'LOADING…';
 async function init() {
   try {
+    level = await loadLevel('/level.json');
     models = await loadTankModels();
-    const treeSource = await loadTreeModel();
-    const farmhouseSource = await loadFarmhouseModel();
-    const farmhouseCount = placeFarmhouses(scene, farmhouseSource);
-    console.log(`placed ${farmhouseCount} farmhouses`);
-    const treeCount = placeTrees(scene, treeSource);
-    console.log(`placed ${treeCount} trees`);
-    grass = createGrass(scene);
+    buildWorld(scene, level);
+    const objectSources = await loadObjectSources(level);
+    placeObjects(scene, level, objectSources);
+    grass = createGrass(scene, level);
     resetMatch();
   } catch (err) {
     console.error('Failed to load tank models', err);

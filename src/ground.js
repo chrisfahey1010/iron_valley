@@ -1,8 +1,9 @@
 // Ground-zone classifier for grass scatter. Pure functions over world.js data.
 import {
   WORLD_SIZE, HALF, PLAY_BOUND, SPAWN, RIVER_HALF_WIDTH, BRIDGE,
-  riverDist, riverCenterX, terrainHeight, obstacles, treeColliders, farmhouseColliders,
+  riverDist, riverCenterX, terrainHeight, obstacles, treeColliders, farmhouseColliders, objectColliders,
 } from './world.js';
+import { regionAt } from './level.js';
 
 export const BANK_BAND = 6;          // river bank band (m)
 export const SPAWN_CLEAR = 0;        // spawn has grass; kept tiny to avoid wheel under-shell clutter
@@ -23,10 +24,13 @@ export function isObstacleAt(x, z, extra = 1.5) {
   for (const o of farmhouseColliders) {
     if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
   }
+  for (const o of objectColliders) {
+    if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
+  }
   return false;
 }
 
-export function groundZone(x, z) {
+export function groundZone(x, z, level = null) {
   if (Math.abs(x) > PLAY_BOUND || Math.abs(z) > PLAY_BOUND) return 'rim';
   const rd = riverDist(x, z);
   if (rd < RIVER_HALF_WIDTH + 2) return 'water';
@@ -36,5 +40,9 @@ export function groundZone(x, z) {
   if (terrainHeight(x, z) > RIM_HEIGHT) return 'rim';
   if (inBridgeSpan(x, z, 3)) return 'clearing';
   if (isObstacleAt(x, z, 1.5)) return 'clearing';
+  if (level) {
+    const region = regionAt(level, x, z);
+    if (region !== 'grasslands') return 'clearing';
+  }
   return 'grass';
 }

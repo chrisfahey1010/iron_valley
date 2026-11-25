@@ -52,3 +52,13 @@ How to work here:
 - Don't over-extend: check this doc and `README.md` before adding systems; keep the single-page Three.js constraint.
 - Tuning lives in the `TUNING` block in `src/main.js`; keep it the single source of gameplay numbers.
 - Keep `README.md` controls/module docs in sync with code changes.
+
+## Level editor & level file
+
+- `editor.html` = 2D level editor (Vite multi-page). Shares world/asset metadata only (scale.js, world.js constants, level.js, terrain height fn) — no gameplay code.
+- `public/level.json` = the level source of truth (world coords: x east, z south, origin at world center, 1 unit = 1 m). Schema: `{ version, name, terrain: { regions: [{id,type,points:[[x,z],...]}], roads: [{id,type,widthM,points:[[x,z],...]}] }, spawns: { player: {x,z,heading}, enemies: [{x,z,heading}] }, objects: [{id,type,x,z,rotation,scale}] }`.
+- Regions: polygons; types `grasslands` (implicit default), `pasture`, `crops`, `clearing`. Roads: polylines; types `gravel`, `dirt`. Both rendered flat-color in the editor.
+- Objects: `tree`, `farmhouse` (more manifest entries with an `editor` block appear automatically in the editor's object palette — no editor-code changes needed). Objects sit on existing terrain height; `scale` multiplies manifest footprint; rotation in radians; ids are stable — agents must preserve ids when editing this file.
+- Editor save: dev mode POSTs to `/__level-save` (Vite middleware overwrites `public/level.json`); static builds fall back to download.
+- Game loads `public/level.json` at startup via `src/level.js` (`loadLevel`); spawns, object placement and ground tinting/grass culling are driven by it. Rocks/ruins remain static ambient scatter (not level objects, yet).
+- To regenerate/replace the initial level, hand-edit `public/level.json` (a full deterministic export of the old procedural scatter is a documented follow-up).

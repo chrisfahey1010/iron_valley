@@ -8,6 +8,7 @@
 //  - terrainHeight() includes the bridge deck override, so tanks, shells and
 //    camera all ground correctly with zero extra call-site changes
 import * as THREE from 'three';
+import { regionAt, REGION_COLORS } from './level.js';
 
 export const WORLD_SIZE = 1000;           // terrain plane size (m)
 export const HALF = WORLD_SIZE / 2;
@@ -98,29 +99,31 @@ function placeObstacles() {
 }
 export const obstacles = placeObstacles();
 
-// Tree collision circles — registered by src/tree.js during placement.
+// Collision circles — registered by src/objects.js during placement.
 export const treeColliders = [];
-
-// Farmhouse collision circles — registered by src/farmhouse.js during placement.
 export const farmhouseColliders = [];
+export const objectColliders = [];
 
 // ---- World build ----
-export function buildWorld(scene) {
+export function buildWorld(scene, level = null) {
   // Terrain mesh
   const seg = 220;
   const geo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
-  const cLow = new THREE.Color(0x49683a);   // valley floor green
   const cHigh = new THREE.Color(0x8a7a55);  // dry high ground
   const cBed = new THREE.Color(0x3f4a35);   // riverbed
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
     const h = terrainHeight(x, z);
     pos.setY(i, h);
+    const regionType = level ? regionAt(level, x, z) : 'grasslands';
+    const cBase = new THREE.Color(REGION_COLORS[regionType] ?? REGION_COLORS.grasslands);
     const t = THREE.MathUtils.clamp((h + 2) / 10, 0, 1);
-    let c = cLow.clone().lerp(cHigh, t);
+    let c = regionType === 'grasslands'
+      ? cBase.clone().lerp(cHigh, t)
+      : cBase.clone().lerp(cHigh, t * 0.35);
     const rd = riverDist(x, z);
     if (rd < RIVER_HALF_WIDTH + 4) c = c.clone().lerp(cBed, 0.75 * (1 - THREE.MathUtils.smoothstep(rd, RIVER_HALF_WIDTH - 1, RIVER_HALF_WIDTH + 4)));
     colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
@@ -215,7 +218,7 @@ export function isOnBridge(x, z) {
 
 // Tank collision: push circle out of obstacles, tree colliders, river bank, and border.
 export function resolveObstacles(pos, radius) {
-  for (const list of [obstacles, treeColliders, farmhouseColliders]) {
+  for (const list of [obstacles, treeColliders, farmhouseColliders, objectColliders]) {
     for (const o of list) {
       const dx = pos.x - o.x, dz = pos.z - o.z;
       const d = Math.hypot(dx, dz);
