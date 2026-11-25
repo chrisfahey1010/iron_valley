@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 — in-game road rendering
+
+- **src/roads.js** (new) — `buildRoads(scene, level)` renders each level.json road polyline as a terrain-conforming ribbon (centerline sampled every ~3 m, offset perpendicular by ±widthM/2, lifted 0.09 m above terrain). Dirt = tan (`#bfa06f`), gravel = grey (`#8d8d88`); per-road `widthM` respected (dirt 3 m, gravel 4 m).
+- **src/main.js** — calls `buildRoads` after `buildWorld`.
+- **src/ground.js** — grass scatter now suppresses on road ribbons (`roadAt` → clearing).
+- **README.md** — module map updated.
+
 ## 2026-11-24 — per-vehicle hull steering rate
 
 - **src/tank_stats.js** — new `hullTurnRateDeg` stat per tank (M24 Chaffee 24°/s, Panzer IV 20°/s); exposed as `hullTurnRate` (rad/s).

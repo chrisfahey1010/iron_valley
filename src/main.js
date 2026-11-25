@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
 import { loadLevel, validateLevel } from './level.js';
+import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects } from './objects.js';
 import { Tank, loadTankModels } from './tank.js';
 import { tankStats } from './tank_stats.js';
@@ -570,6 +571,7 @@ async function init() {
     level = await loadLevel('/level.json');
     models = await loadTankModels();
     buildWorld(scene, level);
+    buildRoads(scene, level);
     const objectSources = await loadObjectSources(level);
     placeObjects(scene, level, objectSources);
     grass = createGrass(scene, level);

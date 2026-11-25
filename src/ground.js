@@ -3,7 +3,7 @@ import {
   WORLD_SIZE, HALF, PLAY_BOUND, SPAWN, RIVER_HALF_WIDTH, BRIDGE,
   riverDist, riverCenterX, terrainHeight, obstacles, treeColliders, farmhouseColliders, objectColliders,
 } from './world.js';
-import { regionAt } from './level.js';
+import { regionAt, roadAt } from './level.js';
 
 export const BANK_BAND = 6;          // river bank band (m)
 export const SPAWN_CLEAR = 0;        // spawn has grass; kept tiny to avoid wheel under-shell clutter
@@ -43,6 +43,7 @@ export function groundZone(x, z, level = null) {
   if (level) {
     const region = regionAt(level, x, z);
     if (region !== 'grasslands') return 'clearing';
+    if (roadAt(level, x, z)) return 'clearing';
   }
   return 'grass';
 }

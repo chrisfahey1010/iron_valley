@@ -41,6 +41,7 @@ Aiming (War Thunder style): the mouse controls the **green ring** — the aiming
 ## Module map
 
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
+- `src/roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM)
 - `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers

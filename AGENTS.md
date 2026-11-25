@@ -20,7 +20,8 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch min/max), keyed by modelKey; consumed by tank.js `trackAim` and by the player/AI aim code in main.js. Add new vehicles here.
 - `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
-- `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter
+- `roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM); built after `buildWorld`
+- `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter; also suppresses grass on road ribbons
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
 - `grass.js` — instanced tuft renderer (crossed quads, wind sway, distance fade, per-instance tint); built in `main.js` init after trees. Lighting: forces a world-up normal in the fragment shader so both crossed-quad sides light identically (hemisphere + sun); do not remove, or back-facing sides go dark again. Grass neither casts nor receives shadows
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
