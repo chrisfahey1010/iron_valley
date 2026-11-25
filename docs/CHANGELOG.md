@@ -1,9 +1,16 @@
 # Changelog
 
+## 2026-11-24 — enemy tanks: Panzer IV only
+
+- **src/scale.js** — Removed `tank_1`, `tank_3`, `tank_4` entries (placeholder CC0 assets).
+- **public/models/** — Deleted `tank_1.glb`, `tank_3.glb`, `tank_4.glb`, and unreferenced `tank_2_sherman.glb`.
+- **src/main.js** — `makeEnemies()` spawns all enemies as `tank_5` (Panzer IV).
+- **README.md / docs/TANK_RIG_REFERENCE.md** — Asset sections updated.
+
 ## 2026-11-24 — player tank: M24 Chaffee (tank_6)
 
 - **assets_src/m24_chaffee/build_m24_chaffee.py** (new) — Blender build of a stylized low-poly M24 Chaffee (~5 m length, olive drab, low rounded turret, long slim barrel with muzzle brake, 5 road wheels per side + drive sprocket). Armature root `Root`, tread bones `TankTrack1/2.{L,R}` with explicit `matrix_parent_inverse`, clips `Tank_Forward/Backwards/TurningLeft/Right` (1 s looped). Exports `public/models/tank_6_m24_chaffee.glb` with `export_yup=True`.
-- **src/scale.js** — `tank_6` added (kind `tank`, lengthM **5**); legacy CC0 Sherman `tank_2` retired (entry removed; `tank_2_sherman.glb` left on disk, unreferenced).
+- **src/scale.js** — `tank_6` added (kind `tank`, lengthM **5**); legacy CC0 Sherman `tank_2` retired (entry removed).
 - **src/main.js / src/tank.js** — player spawn now uses `tank_6`; default model key updated.
 - **README.md** — tank asset section updated (M24 player, Panzer IV worked example, retired tank_2).
 

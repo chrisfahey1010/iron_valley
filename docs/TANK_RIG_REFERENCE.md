@@ -1,6 +1,6 @@
 # Tank Rig & Animation — Reference for Future Asset Creation
 
-How the game drives the CC0 tanks (`tank_1/2/3/4`) and the contract any future
+How the game drives the tank rig (`tank_5` Panzer IV enemies, `tank_6` M24 player) and the contract any future
 Blender-authored tank must satisfy. Source of truth: `src/tank.js`, `src/scale.js`,
 `src/main.js`; assets under `public/models/`.
 

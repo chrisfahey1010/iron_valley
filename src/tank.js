@@ -19,7 +19,7 @@ export async function loadTankModels() {
     const gltf = await new Promise((res, rej) => loader.load(asset.url, res, undefined, rej));
     return [key, gltf];
   }));
-  return Object.fromEntries(entries); // {tank_1: gltf, ...}
+  return Object.fromEntries(entries); // {tank_6: gltf, tank_5: gltf, ...}
 }
 
 function fixSkeletons(clone, source) {

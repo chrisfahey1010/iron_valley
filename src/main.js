@@ -122,7 +122,7 @@ scene.add(sun);
 buildWorld(scene);
 
 // ---------- state ----------
-let models = null;            // {tank_1: gltf, ...} loaded before match start
+let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before match start
 let grass = null;              // instanced grass tufts (see grass.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
@@ -143,9 +143,9 @@ function makeEnemies() {
     { x: -110, z: -180, heading: Math.PI / 2 },
     { x: -30,  z: -160, heading: -Math.PI / 2 },
   ];
-  const enemyModels = ['tank_1', 'tank_3', 'tank_4', 'tank_5'];
-  return spots.slice(0, TUNING.enemyCount).map((s, i) =>
-    new Tank({ modelKey: enemyModels[i % enemyModels.length], x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
+  const enemyModel = 'tank_5'; // all enemies are Panzer IVs for now
+  return spots.slice(0, TUNING.enemyCount).map((s) =>
+    new Tank({ modelKey: enemyModel, x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
   );
 }
 

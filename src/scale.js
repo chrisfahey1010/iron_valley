@@ -12,10 +12,7 @@
 import * as THREE from 'three';
 
 export const ASSETS = {
-  tank_1:             { url: 'models/tank_1.glb',          kind: 'tank', lengthM: 6 },
   tank_6:             { url: 'models/tank_6_m24_chaffee.glb', kind: 'tank', lengthM: 5 },
-  tank_3:             { url: 'models/tank_3.glb',          kind: 'tank', lengthM: 6 },
-  tank_4:             { url: 'models/tank_4.glb',          kind: 'tank', lengthM: 6 },
   tank_5:             { url: 'models/tank_5_panzer_iv.glb', kind: 'tank', lengthM: 6 },
   tree:               { url: 'models/tree_conifer.glb', kind: 'tree', heightM: 10 },
   farmhouse:          { url: 'models/farmhouse.glb', kind: 'props', lengthM: 14 },
