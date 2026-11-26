@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-25 — region resizing: vertex + whole-polygon drag, forest auto-regeneration
+
+- **src/editor.js** — terrain regions are now resizable: drag a polygon vertex to reshape it, or drag the polygon body (select tool) to move the whole polygon. One history snapshot per drag. When a `forest` region is reshaped (vertex drag or body move), its generated trees (`<regionId>-tree-N`) are removed and re-scattered deterministically via `generateForestTrees` (same seeded layout for an unchanged region size; `statusHint` reports the new count). Manual tree edits/deletes remain untouched.
+- **README.md** — editor capability line updated.
+
 ## 2026-11-25 — editor object ID uniqueness + index-based selection
 
 - **public/level.json** — duplicate `farmhouse-22` (near player spawn) renamed to `farmhouse-28`; all object IDs now unique.

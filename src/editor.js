@@ -684,7 +684,7 @@ canvas.addEventListener('mousedown', e => {
   // vertex drag
   const v = vertexAt(sx, sy);
   if (v && tool === 'select') {
-    drag = { type: 'vertex', ...v };
+    drag = { type: 'vertex', ...v, moved: false };
     selected = v.kind === 'region-vertex' ? { kind: 'region', id: v.id } : { kind: 'road', id: v.id };
     draw(); renderProperties();
     return;
@@ -741,6 +741,9 @@ canvas.addEventListener('mousedown', e => {
     } else if (hit.kind === 'spawn-enemy') {
       const en = level.spawns.enemies[hit.index];
       drag = { type: 'spawn-enemy', index: hit.index, dx: w.x - en.x, dz: w.z - en.z };
+    } else if (hit.kind === 'region') {
+      const r = level.terrain.regions.find(r => r.id === hit.id);
+      if (r) drag = { type: 'region-move', id: r.id, startW: { x: w.x, z: w.z }, startPoints: r.points.map(p => [p[0], p[1]]), moved: false };
     }
   } else {
     selected = null;
@@ -811,7 +814,14 @@ canvas.addEventListener('mousemove', e => {
   }
 });
 
-window.addEventListener('mouseup', () => { drag = null; });
+window.addEventListener('mouseup', () => {
+  if (drag && drag.moved && (drag.type === 'region-move' || (drag.type === 'vertex' && drag.kind === 'region-vertex'))) {
+    const id = drag.type === 'region-move' ? drag.id : drag.id;
+    const r = level.terrain.regions.find(r => r.id === id);
+    if (r && r.type === 'forest') regenerateForestRegion(r);
+  }
+  drag = null;
+});
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -872,6 +882,15 @@ function removeGeneratedTrees(regionId) {
   level.objects = level.objects.filter(o => !(o.type === 'tree' && String(o.id).startsWith(prefix)));
 }
 
+function regenerateForestRegion(r) {
+  const prev = generatedTreesFor(r.id).length;
+  removeGeneratedTrees(r.id);
+  const res = generateForestTrees(level, r);
+  level.objects.push(...res.trees);
+  statusHint.textContent = `Region resized — regenerated ${res.placed}/${res.target} trees (was ${prev})` + (res.failed ? `, ${res.failed} blocked` : '');
+  draw(); renderProperties();
+}
+
 function deleteSelected() {
   if (!selected) return;
   pushHistory();
@@ -920,7 +939,7 @@ canvas.addEventListener('mousedown', e => {
   const { sx, sy } = getPos(e);
   const w = screenToWorld(sx, sy);
   const v = vertexAt(sx, sy);
-  const wantDrag = v || objectAt(w.x, w.z) != null || spawnAt(w.x, w.z);
+  const wantDrag = v || objectAt(w.x, w.z) != null || spawnAt(w.x, w.z) || regionAt(w.x, w.z);
   if (wantDrag) {
     history.push(JSON.stringify(level));
     if (history.length > MAX_HISTORY) history.shift();
