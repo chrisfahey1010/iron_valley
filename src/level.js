@@ -12,6 +12,23 @@ export const REGION_COLORS = {
   forest: 0x49683a, // same base as grasslands (forest keeps the grass texture base)
 };
 
+export const MENU_PITCH_MIN = -80 * Math.PI / 180;
+export const MENU_PITCH_MAX = 80 * Math.PI / 180;
+export const MENU_DEFAULT_ALTITUDE = 40;
+export const MENU_DEFAULT_PITCH = -30 * Math.PI / 180;
+
+function defaultMenuCamera(spawn) {
+  const heading = spawn?.heading ?? 0;
+  const back = 35; // meters behind the spawn, so the editor marker doesn't overlap the player spawn
+  return {
+    x: (spawn?.x ?? 0) - Math.sin(heading) * back,
+    z: (spawn?.z ?? 0) - Math.cos(heading) * back,
+    altitude: MENU_DEFAULT_ALTITUDE,
+    yaw: heading,
+    pitch: MENU_DEFAULT_PITCH,
+  };
+}
+
 export function defaultLevel() {
   return {
     version: 1,
@@ -19,6 +36,7 @@ export function defaultLevel() {
     terrain: { regions: [], roads: [] },
     spawns: { player: { x: -60, z: -350, heading: 0 }, enemies: [] },
     objects: [],
+    menuCamera: defaultMenuCamera({ x: -60, z: -350, heading: 0 }),
   };
 }
 
@@ -70,6 +88,19 @@ export function validateLevel(raw) {
         out.spawns.enemies.push({ x: e.x, z: e.z, heading: Number(e.heading) || 0 });
       }
     }
+  }
+  // menu camera (preview shot at the main menu)
+  const mc = level.menuCamera;
+  const spawn = out.spawns.player;
+  if (mc && Number.isFinite(mc.x) && Number.isFinite(mc.z) && Number.isFinite(mc.altitude) && Number.isFinite(mc.yaw) && Number.isFinite(mc.pitch)) {
+    out.menuCamera = {
+      x: mc.x, z: mc.z,
+      altitude: Math.max(1, Number(mc.altitude)),
+      yaw: Number(mc.yaw),
+      pitch: Math.max(MENU_PITCH_MIN, Math.min(MENU_PITCH_MAX, Number(mc.pitch))),
+    };
+  } else {
+    out.menuCamera = defaultMenuCamera(spawn);
   }
   if (Array.isArray(level.objects)) {
     for (const o of level.objects) {

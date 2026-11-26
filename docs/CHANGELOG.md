@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-26 — main-menu preview camera: editor-controlled `menuCamera`
+
+- **public/level.json** — new top-level `menuCamera` block: `{ x, z, altitude, yaw, pitch }` (world meters, radians — same conventions as spawns). Default (when missing/invalid) is a 40 m aerial shot 35 m behind the player spawn, pitched −30° toward the spawn area.
+- **src/level.js** — `MENU_PITCH_MIN`/`MENU_PITCH_MAX` (±80°), `MENU_DEFAULT_ALTITUDE` (40), `MENU_DEFAULT_PITCH` (−30°), `defaultMenuCamera(spawn)`; `defaultLevel()` includes a `menuCamera`; `validateLevel()` parses/validates it (finite x/z/altitude/yaw/pitch; altitude ≥ 1; pitch clamped to ±80°; any invalid value falls back to the default).
+- **src/main.js** — `updateMenuCamera()` positions the camera at `terrainHeight(x, z) + altitude` and aims along yaw/pitch toward a look-point scaled by cos(pitch); called in the `menu` loop branch. The in-game camera (`updateCamera()`) is untouched.
+- **src/editor.js** — teal eye-ring marker (like spawn chevrons) for the menu camera: draggable, selectable, highlight, properties panel (X/Z/altitude/yaw/pitch, degrees in the panel, radians in the file, pitch clamped ±80°, altitude ≥ 1), +15° rotate, delete ignored.
+- **README.md / docs/LEVEL_EDITOR_PLAN.md** — docs updated.
+
 ## 2026-11-25 — farmhouse/tree/wreck collision + per-frame aim-cost fix
 
 - **src/world.js** — tree trunks are now small oriented circles (~0.65 m, canopy passes through); farmhouses are oriented boxes (≈13.4 x 7.4 m footprint, trimmed) with `pushOutOfBox` tank push-out; dead tanks are permanent wreck colliders (`deadTankColliders`) that block both tanks and shells. `resolveObstacles` pushes circles out of obstacles, trees, objects, wrecks, farmhouse boxes and the river. Fixed a zero-radius push-back edge case for tanks spawning exactly inside a circular collider. Added a uniform-grid spatial index (`rebuildTreeGrid`/`treesNear`) for tree trunks — the per-frame aim predictor and per-shell stepping used to scan all ~2800 trunks per sub-step.

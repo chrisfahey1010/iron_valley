@@ -69,6 +69,7 @@ Non-goals (explicit):
     "player":  { "x": -60, "z": -350, "heading": 0 },
     "enemies": [ { "x": -120, "z": -260, "heading": 3.1416 } ]
   },
+  "menuCamera": { "x": -88, "z": -385, "altitude": 40, "yaw": 0, "pitch": -0.52 },
   "objects": [
     { "id": "tree-17", "type": "tree",      "x": 12.3,  "z": -88.1,
       "rotation": 1.05, "scale": 1.1 }
@@ -80,6 +81,7 @@ Non-goals (explicit):
   origin at world center; 1 unit = 1 m). Document this in AGENTS.md.
 - `scale` on objects is a multiplier on the asset's manifest default size.
 - `objects[].id` is stable and unique; agents must preserve ids when editing.
+- `menuCamera` is optional; when present it is `{ x, z, altitude, yaw, pitch }` in meters/radians. `altitude` ≥ 1 (m above local terrain), `pitch` clamped to ±80°, `yaw` any angle. Missing/invalid → default aerial shot over the spawn area (40 m, 35 m behind player spawn, pitch −30°). The game's menu screen renders this camera; the in-game camera is unaffected. The editor surfaces it as a draggable teal marker with X/Z/altitude/yaw/pitch properties (degrees in the panel).
 - `regions[].type` and `roads[].type` must be in the REGION/ROAD type tables
   (see below). Keep the enum small for MVP: regions `grasslands` (default/empty),
   `pasture`, `crops`, `clearing`; roads `gravel`, `dirt`.

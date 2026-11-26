@@ -529,6 +529,20 @@ function updateCamera() {
   if (camera.position.y < minY) camera.position.y = minY;
 }
 
+function updateMenuCamera() {
+  const mc = level?.menuCamera;
+  if (!mc) return;
+  const y = terrainHeight(mc.x, mc.z) + mc.altitude;
+  camera.position.set(mc.x, y, mc.z);
+  const cp = Math.cos(mc.pitch);
+  const look = new THREE.Vector3(
+    mc.x + Math.sin(mc.yaw) * cp,
+    y + Math.sin(mc.pitch),
+    mc.z + Math.cos(mc.yaw) * cp
+  );
+  camera.lookAt(look);
+}
+
 function endMatch(victory) {
   if (state !== 'playing') return;
   state = victory ? 'victory' : 'defeat';
@@ -548,6 +562,8 @@ function loop(t) {
   try {
     if (state === 'playing' && !paused) {
       update(dt);
+    } else if (state === 'menu') {
+      updateMenuCamera();
     }
     if (grass) grass.update(t / 1000);
     renderer.render(scene, camera);

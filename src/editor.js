@@ -3,7 +3,7 @@
 // level.js helpers). No gameplay code.
 import { ASSETS } from './scale.js';
 import { WORLD_SIZE, HALF, PLAY_BOUND, riverCenterX, BRIDGE, RIVER_HALF_WIDTH } from './world.js';
-import { loadLevel, validateLevel, defaultLevel, REGION_TYPES, ROAD_TYPES, REGION_COLORS } from './level.js';
+import { loadLevel, validateLevel, defaultLevel, REGION_TYPES, ROAD_TYPES, REGION_COLORS, MENU_PITCH_MIN, MENU_PITCH_MAX } from './level.js';
 import { generateForestTrees, regionArea, DEFAULT_FOREST_DENSITY } from './forest.js';
 
 // ---------- DOM ----------
@@ -365,6 +365,9 @@ function draw() {
   // spawn markers
   drawSpawns();
 
+  // menu camera marker
+  drawMenuCamera();
+
   // selection highlight
   if (selected && selected.kind === 'object') {
     const o = level.objects[selected.index];
@@ -382,6 +385,9 @@ function draw() {
   } else if (selected && selected.kind === 'spawn-enemy') {
     const e = level.spawns.enemies[selected.index];
     if (e) { const sp = worldToScreen(e.x, e.z); ctx.strokeStyle = '#4dd0e1'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sp.x, sp.y, 14, 0, Math.PI * 2); ctx.stroke(); }
+  } else if (selected && selected.kind === 'menuCamera') {
+    const mc = level.menuCamera;
+    if (mc) { const sp = worldToScreen(mc.x, mc.z); ctx.strokeStyle = '#4dd0e1'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sp.x, sp.y, 16, 0, Math.PI * 2); ctx.stroke(); }
   } else if (selected && selected.kind === 'region') {
     const r = level.terrain.regions.find(r => r.id === selected.id);
     if (r && r.points.length >= 3) {
@@ -472,6 +478,36 @@ function drawChevron(x, y, heading, color, s) {
   ctx.fill();
   ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1; ctx.stroke();
   ctx.restore();
+}
+
+function drawMenuCamera() {
+  const mc = level.menuCamera;
+  if (!mc) return;
+  const sp = worldToScreen(mc.x, mc.z);
+  ctx.save();
+  ctx.translate(sp.x, sp.y);
+  ctx.rotate(Math.atan2(Math.cos(mc.yaw), Math.sin(mc.yaw)));
+  // frustum wedge indicating facing direction
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(9, -6);
+  ctx.lineTo(9, 6);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(77, 208, 225, 0.5)';
+  ctx.fill();
+  // body
+  ctx.beginPath();
+  ctx.arc(0, 0, 7, 0, Math.PI * 2);
+  ctx.fillStyle = '#4dd0e1';
+  ctx.fill();
+  ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.5; ctx.stroke();
+  // lens dot
+  ctx.beginPath();
+  ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#0e1013'; ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#4dd0e1'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('MENU CAM', sp.x, sp.y - 14);
 }
 
 function resize() {
@@ -569,6 +605,28 @@ function renderProperties() {
     mkField('X', input('number', p.x, v => { pushHistory(); p.x = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Z', input('number', p.z, v => { pushHistory(); p.z = parseFloat(v) || 0; draw(); }, 0.1));
     mkDegreeField('Heading (°)', () => p.heading ?? 0, rad => { p.heading = rad; });
+  } else if (selected.kind === 'menuCamera') {
+    const mc = level.menuCamera;
+    if (!mc) { selected = null; renderProperties(); return; }
+    const title = document.createElement('h3');
+    title.textContent = 'Menu camera (preview shot)';
+    propertiesEl.appendChild(title);
+    mkField('X', input('number', mc.x, v => { pushHistory(); mc.x = parseFloat(v) || 0; draw(); }, 0.1));
+    mkField('Z', input('number', mc.z, v => { pushHistory(); mc.z = parseFloat(v) || 0; draw(); }, 0.1));
+    mkField('Altitude (m)', input('number', mc.altitude, v => { pushHistory(); mc.altitude = Math.max(1, parseFloat(v) || 1); draw(); }, 1));
+    mkDegreeField('Yaw (°)', () => mc.yaw ?? 0, rad => { mc.yaw = rad; });
+    mkField('Pitch (°, -80…+80)', input('number', Math.round((mc.pitch ?? 0) * 180 / Math.PI * 10) / 10, v => {
+      pushHistory();
+      let d = parseFloat(v);
+      if (isNaN(d)) d = 0;
+      d = Math.max(-80, Math.min(80, d));
+      mc.pitch = degToRad(d);
+      draw(); renderProperties();
+    }, 1));
+    const note = document.createElement('div');
+    note.className = 'empty-note';
+    note.textContent = 'Drives the main-menu preview camera only (not the in-game camera). Positive yaw/pitch = facing right/up; negative pitch looks down.';
+    propertiesEl.appendChild(note);
   } else if (selected.kind === 'spawn-enemy') {
     const e = level.spawns.enemies[selected.index];
     if (!e) { selected = null; renderProperties(); return; }
@@ -786,6 +844,9 @@ canvas.addEventListener('mousedown', e => { hoverVertex = null;
     } else if (hit.kind === 'spawn-enemy') {
       const en = level.spawns.enemies[hit.index];
       drag = { type: 'spawn-enemy', index: hit.index, dx: w.x - en.x, dz: w.z - en.z };
+    } else if (hit.kind === 'menuCamera') {
+      const mc = level.menuCamera;
+      drag = { type: 'menuCamera', dx: w.x - mc.x, dz: w.z - mc.z };
     } else if (hit.kind === 'region') {
       const r = level.terrain.regions.find(r => r.id === hit.id);
       if (r) drag = { type: 'region-move', id: r.id, startW: { x: w.x, z: w.z }, startPoints: r.points.map(p => [p[0], p[1]]), moved: false };
@@ -796,10 +857,18 @@ canvas.addEventListener('mousedown', e => { hoverVertex = null;
   draw(); renderProperties();
 });
 
+function menuCameraAt(w) {
+  const mc = level.menuCamera;
+  if (mc && Math.hypot(w.x - mc.x, w.z - mc.z) < 8) return { kind: 'menuCamera' };
+  return null;
+}
+
 function hitTest(sx, sy, w) {
   // objects first, then spawns, then vertices, roads, regions
   const sp = spawnAt(w.x, w.z);
   if (sp) return sp;
+  const mc = menuCameraAt(w);
+  if (mc) return mc;
   const oi = objectAt(w.x, w.z);
   if (oi != null) return { kind: 'object', index: oi };
   const rd = roadAt(w.x, w.z);
@@ -845,6 +914,9 @@ canvas.addEventListener('mousemove', e => {
     } else if (drag.type === 'spawn-enemy') {
       const en = level.spawns.enemies[drag.index];
       if (en) { en.x = w.x - drag.dx; en.z = w.z - drag.dz; draw(); renderProperties(); }
+    } else if (drag.type === 'menuCamera') {
+      const mc = level.menuCamera;
+      if (mc) { mc.x = w.x - drag.dx; mc.z = w.z - drag.dz; draw(); renderProperties(); }
     } else if (drag.type === 'vertex') {
       if (drag.kind === 'region-vertex') {
         const r = level.terrain.regions.find(r => r.id === drag.id);
@@ -943,6 +1015,7 @@ function regenerateForestRegion(r) {
 
 function deleteSelected() {
   if (!selected) return;
+  if (selected.kind === 'menuCamera') { /* keep menu camera; ignore delete */ return; }
   pushHistory();
   if (selected.kind === 'object') level.objects.splice(selected.index, 1);
   else if (selected.kind === 'spawn-enemy') level.spawns.enemies.splice(selected.index, 1);
@@ -953,12 +1026,20 @@ function deleteSelected() {
 }
 
 function rotateSelected() {
-  if (!selected || selected.kind !== 'object') return;
-  const o = level.objects[selected.index];
-  if (!o) return;
-  pushHistory();
-  o.rotation = (o.rotation ?? 0) + Math.PI / 12;
-  draw(); renderProperties();
+  if (!selected) return;
+  if (selected.kind === 'object') {
+    const o = level.objects[selected.index];
+    if (!o) return;
+    pushHistory();
+    o.rotation = (o.rotation ?? 0) + Math.PI / 12;
+    draw(); renderProperties();
+  } else if (selected.kind === 'menuCamera') {
+    const mc = level.menuCamera;
+    if (!mc) return;
+    pushHistory();
+    mc.yaw = (mc.yaw ?? 0) + Math.PI / 12;
+    draw(); renderProperties();
+  }
 }
 
 function nudgeSelected(key, shift) {
@@ -978,6 +1059,9 @@ function nudgeSelected(key, shift) {
   } else if (selected?.kind === 'spawn-enemy') {
     const en = level.spawns.enemies[selected.index];
     if (en) { en.x += d[0]; en.z += d[1]; }
+  } else if (selected?.kind === 'menuCamera') {
+    const mc = level.menuCamera;
+    if (mc) { mc.x += d[0]; mc.z += d[1]; }
   }
   draw(); renderProperties();
 }
@@ -989,7 +1073,7 @@ canvas.addEventListener('mousedown', e => {
   const { sx, sy } = getPos(e);
   const w = screenToWorld(sx, sy);
   const v = vertexAt(sx, sy);
-  const wantDrag = v || objectAt(w.x, w.z) != null || spawnAt(w.x, w.z) || regionAt(w.x, w.z);
+  const wantDrag = v || objectAt(w.x, w.z) != null || spawnAt(w.x, w.z) || menuCameraAt(w) || regionAt(w.x, w.z);
   if (wantDrag) {
     history.push(JSON.stringify(level));
     if (history.length > MAX_HISTORY) history.shift();
