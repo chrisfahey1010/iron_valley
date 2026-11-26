@@ -356,10 +356,12 @@ function draw() {
       ctx.lineTo(sp.x + Math.sin(o.rotation) * Math.max(6, r * camera.scale * 0.9), sp.y + Math.cos(o.rotation) * Math.max(6, r * camera.scale * 0.9));
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
     }
-    ctx.fillStyle = '#e8e4da';
-    ctx.font = '10px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(o.id, sp.x, sp.y + Math.max(10, r * camera.scale + 6));
+    if (o.type !== 'tree') {
+      ctx.fillStyle = '#e8e4da';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(o.id, sp.x, sp.y + Math.max(10, r * camera.scale + 6));
+    }
   }
 
   // spawn markers
