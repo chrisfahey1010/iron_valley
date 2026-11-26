@@ -24,6 +24,23 @@ let history = [];
 const MAX_HISTORY = 20;
 let nextIdCounter = 1;
 
+function uniqueObjectId(wanted, self) {
+  const taken = new Set();
+  for (const o of level.objects) if (o !== self) taken.add(o.id);
+  let id = (wanted || 'object').trim() || 'object';
+  if (!taken.has(id)) return id;
+  let n = 2;
+  while (taken.has(`${id}-${n}`)) n++;
+  return `${id}-${n}`;
+}
+function nextFreeObjectId(type) {
+  const taken = new Set(level.objects.map(o => o.id));
+  let n = nextIdCounter;
+  while (taken.has(`${type}-${n}`)) n++;
+  nextIdCounter = n + 1;
+  return `${type}-${n}`;
+}
+
 const REGION_COLORS_CSS = { grasslands: '#49683a', pasture: '#8a8452', crops: '#6b7a3a', clearing: '#9a8460' };
 const ROAD_COLORS_CSS = { gravel: '#8b8578', dirt: '#7a6a4f' };
 const ROAD_WIDTH_DEFAULT = { gravel: 4, dirt: 3 };
@@ -85,11 +102,12 @@ function roadAt(x, z) {
 function objectAt(x, z) {
   // nearest first
   let best = null, bestD = Infinity;
-  for (const o of level.objects) {
+  for (let i = 0; i < level.objects.length; i++) {
+    const o = level.objects[i];
     const meta = ASSETS[o.type];
     const r = (meta?.editor?.footprintR ?? 1) * (o.scale ?? 1);
     const d = Math.hypot(x - o.x, z - o.z);
-    if (d < r && d < bestD) { best = o; bestD = d; }
+    if (d < r && d < bestD) { best = i; bestD = d; }
   }
   return best;
 }
@@ -347,7 +365,7 @@ function draw() {
 
   // selection highlight
   if (selected && selected.kind === 'object') {
-    const o = level.objects.find(o => o.id === selected.id);
+    const o = level.objects[selected.index];
     if (o) {
       const meta = ASSETS[o.type];
       const r = (meta?.editor?.footprintR ?? 1) * (o.scale ?? 1);
@@ -483,20 +501,20 @@ function renderProperties() {
   };
 
   if (selected.kind === 'object') {
-    const o = level.objects.find(o => o.id === selected.id);
+    const o = level.objects[selected.index];
     if (!o) { selected = null; renderProperties(); return; }
     const meta = ASSETS[o.type];
     const title = document.createElement('h3');
     title.textContent = `Object · ${o.type}`;
     propertiesEl.appendChild(title);
-    mkField('ID', input('text', o.id, v => { pushHistory(); o.id = v; draw(); }));
+    mkField('ID', input('text', o.id, v => { pushHistory(); o.id = uniqueObjectId(v, o); draw(); }));
     mkField('X', input('number', o.x, v => { pushHistory(); o.x = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Z', input('number', o.z, v => { pushHistory(); o.z = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Rotation (rad)', input('number', o.rotation ?? 0, v => { pushHistory(); o.rotation = parseFloat(v) || 0; draw(); }, 0.01));
     mkField('Scale', input('number', o.scale ?? 1, v => { pushHistory(); o.scale = Math.max(0.1, parseFloat(v) || 1); draw(); }, 0.05));
     const del = document.createElement('button');
     del.textContent = 'Delete object';
-    del.addEventListener('click', () => { pushHistory(); level.objects = level.objects.filter(x => x.id !== o.id); selected = null; draw(); renderProperties(); });
+    del.addEventListener('click', () => { pushHistory(); level.objects.splice(selected.index, 1); selected = null; draw(); renderProperties(); });
     propertiesEl.appendChild(del);
   } else if (selected.kind === 'spawn-player') {
     const p = level.spawns.player;
@@ -650,9 +668,9 @@ canvas.addEventListener('mousedown', e => {
   if (tool === 'object') {
     if (!objectToolAsset) return;
     pushHistory();
-    const id = `${objectToolAsset}-${nextIdCounter++}`;
+    const id = nextFreeObjectId(objectToolAsset);
     level.objects.push({ id, type: objectToolAsset, x: w.x, z: w.z, rotation: 0, scale: 1 });
-    selected = { kind: 'object', id };
+    selected = { kind: 'object', index: level.objects.length - 1 };
     draw(); renderProperties();
     return;
   }
@@ -676,8 +694,8 @@ canvas.addEventListener('mousedown', e => {
   if (hit) {
     selected = hit;
     if (hit.kind === 'object') {
-      const o = level.objects.find(o => o.id === hit.id);
-      drag = { type: 'object', id: hit.id, dx: w.x - o.x, dz: w.z - o.z };
+      const o = level.objects[hit.index];
+      drag = { type: 'object', index: hit.index, dx: w.x - o.x, dz: w.z - o.z };
     } else if (hit.kind === 'spawn-player') {
       const p = level.spawns.player;
       drag = { type: 'spawn-player', dx: w.x - p.x, dz: w.z - p.z };
@@ -695,8 +713,8 @@ function hitTest(sx, sy, w) {
   // objects first, then spawns, then vertices, roads, regions
   const sp = spawnAt(w.x, w.z);
   if (sp) return sp;
-  const o = objectAt(w.x, w.z);
-  if (o) return { kind: 'object', id: o.id };
+  const oi = objectAt(w.x, w.z);
+  if (oi != null) return { kind: 'object', index: oi };
   const rd = roadAt(w.x, w.z);
   if (rd) return { kind: 'road', id: rd.id };
   const rg = regionAt(w.x, w.z);
@@ -729,7 +747,7 @@ canvas.addEventListener('mousemove', e => {
       camera.z = drag.camStartZ - (sy - drag.startSy) / camera.scale;
       draw();
     } else if (drag.type === 'object') {
-      const o = level.objects.find(o => o.id === drag.id);
+      const o = level.objects[drag.index];
       if (o) { o.x = w.x - drag.dx; o.z = w.z - drag.dz; draw(); renderProperties(); }
     } else if (drag.type === 'spawn-player') {
       const p = level.spawns.player;
@@ -805,7 +823,7 @@ function finishRoad() {
 function deleteSelected() {
   if (!selected) return;
   pushHistory();
-  if (selected.kind === 'object') level.objects = level.objects.filter(o => o.id !== selected.id);
+  if (selected.kind === 'object') level.objects.splice(selected.index, 1);
   else if (selected.kind === 'spawn-enemy') level.spawns.enemies.splice(selected.index, 1);
   else if (selected.kind === 'region') level.terrain.regions = level.terrain.regions.filter(r => r.id !== selected.id);
   else if (selected.kind === 'road') level.terrain.roads = level.terrain.roads.filter(r => r.id !== selected.id);
@@ -815,7 +833,7 @@ function deleteSelected() {
 
 function rotateSelected() {
   if (!selected || selected.kind !== 'object') return;
-  const o = level.objects.find(o => o.id === selected.id);
+  const o = level.objects[selected.index];
   if (!o) return;
   pushHistory();
   o.rotation = (o.rotation ?? 0) + Math.PI / 12;
@@ -832,7 +850,7 @@ function nudgeSelected(key, shift) {
   if (!d) return;
   pushHistory();
   if (selected?.kind === 'object') {
-    const o = level.objects.find(o => o.id === selected.id);
+    const o = level.objects[selected.index];
     if (o) { o.x += d[0]; o.z += d[1]; }
   } else if (selected?.kind === 'spawn-player') {
     level.spawns.player.x += d[0]; level.spawns.player.z += d[1];
@@ -850,7 +868,7 @@ canvas.addEventListener('mousedown', e => {
   const { sx, sy } = getPos(e);
   const w = screenToWorld(sx, sy);
   const v = vertexAt(sx, sy);
-  const wantDrag = v || objectAt(w.x, w.z) || spawnAt(w.x, w.z);
+  const wantDrag = v || objectAt(w.x, w.z) != null || spawnAt(w.x, w.z);
   if (wantDrag) {
     history.push(JSON.stringify(level));
     if (history.length > MAX_HISTORY) history.shift();
@@ -862,8 +880,13 @@ async function init() {
   level = await loadLevel('/level.json');
   const sp = level.spawns?.player;
   if (sp) { camera.x = sp.x; camera.z = sp.z; }
-  // pick nextIdCounter safely
-  nextIdCounter = 1 + level.objects.length;
+  // pick nextIdCounter safely: max numeric suffix across ids + 1
+  let maxN = 0;
+  for (const o of level.objects) {
+    const m = /(\d+)$/.exec(o.id ?? '');
+    if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+  }
+  nextIdCounter = maxN + 1;
   buildPalette();
   rebuildPaletteSelection();
   resize();

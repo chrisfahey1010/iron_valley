@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-25 — editor object ID uniqueness + index-based selection
+
+- **public/level.json** — duplicate `farmhouse-22` (near player spawn) renamed to `farmhouse-28`; all object IDs now unique.
+- **src/level.js** — `validateLevel()` now dedupes IDs for regions/roads/objects on load (renames duplicates with a `-2`, `-3`… suffix + console warning), so stale/hand-edited level files cannot silently load duplicate IDs.
+- **src/editor.js** — object selection, highlight, properties panel, drag, delete, rotate, nudge and drag-history capture are now index-based (`selected.index` / `drag.index`) instead of ID-based; manual ID rename passes through `uniqueObjectId()` (auto-suffixes on collision); object placement uses `nextFreeObjectId()` (scans taken IDs) instead of `1 + objects.length`; `nextIdCounter` initializes from the max numeric suffix in existing IDs.
+
 ## 2026-11-24 — in-game road rendering
 
 - **src/roads.js** (new) — `buildRoads(scene, level)` renders each level.json road polyline as a terrain-conforming ribbon (centerline sampled every ~3 m, offset perpendicular by ±widthM/2, lifted 0.09 m above terrain). Dirt = tan (`#bfa06f`), gravel = grey (`#8d8d88`); per-road `widthM` respected (dirt 3 m, gravel 4 m).

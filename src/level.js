@@ -23,6 +23,19 @@ export function defaultLevel() {
 
 function warn(msg) { console.warn('[level]', msg); }
 
+function dedupeIds(items, label) {
+  const seen = new Map();
+  for (const it of items) {
+    let id = String(it.id || label);
+    if (!seen.has(id)) { seen.set(id, 1); it.id = id; continue; }
+    let n = seen.get(id) + 1;
+    while (seen.has(`${id}-${n}`)) n++;
+    it.id = `${id}-${n}`;
+    seen.set(id, n); seen.set(it.id, 1);
+    warn('duplicate id renamed:', it.id);
+  }
+}
+
 export function validateLevel(raw) {
   const level = raw && typeof raw === 'object' ? raw : defaultLevel();
   const out = defaultLevel();
@@ -67,6 +80,9 @@ export function validateLevel(raw) {
       });
     }
   }
+  dedupeIds(out.terrain.regions, 'region');
+  dedupeIds(out.terrain.roads, 'road');
+  dedupeIds(out.objects, 'obj');
   return out;
 }
 
