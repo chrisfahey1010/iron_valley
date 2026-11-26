@@ -1,7 +1,7 @@
 // Ground-zone classifier for grass scatter. Pure functions over world.js data.
 import {
   WORLD_SIZE, HALF, PLAY_BOUND, SPAWN, RIVER_HALF_WIDTH, BRIDGE,
-  riverDist, riverCenterX, terrainHeight, obstacles, treeColliders, farmhouseColliders, objectColliders,
+  riverDist, riverCenterX, terrainHeight, treeColliders, farmhouseColliders, objectColliders,
 } from './world.js';
 import { regionAt, roadAt } from './level.js';
 
@@ -15,9 +15,6 @@ export function inBridgeSpan(x, z, pad = 0) {
 }
 
 export function isObstacleAt(x, z, extra = 1.5) {
-  for (const o of obstacles) {
-    if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
-  }
   for (const o of treeColliders) {
     if (Math.hypot(x - o.x, z - o.z) < o.r + extra) return true;
   }

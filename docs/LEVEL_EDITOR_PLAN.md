@@ -20,7 +20,7 @@ Key requirements (from the user):
 - Roads: polyline strokes with width (gravel/dirt). Roads render as strokes.
 - Objects (trees, farmhouses, etc.): place/move/rotate/delete in the editor.
 - I want a Save button that overwrites the level file — simple, works well, done.
-- Remove existing procedural scatter (trees/farmhouses/rocks/ruins become level
+- Remove existing procedural scatter (trees/farmhouses become level
   objects). Grass stays but is regional (see below).
 - New assets added later should show up in the editor palette automatically
   (manifest-driven).
@@ -178,11 +178,11 @@ No backend, no server-side state.
   = flat-color tint per region (grasslands = current green-ish, pasture = tan/
   olive, crops = rich brown-green, clearing = dusty tan). River channel carve
   unchanged. Keep riverbed/bank overrides regardless of region painting.
-- `obstacles` and scatter arrays (trees/farmhouses) — REMOVED as module-level
+- scatter arrays (trees/farmhouses) — REMOVED as module-level
   data. Collisions come from level.json objects. `resolveObstacles` reads
   objects from the loaded level (with each object's collider radius from the
   manifest).
-- Trees/farmhouses/obstacles: `src/tree.js` and `src/farmhouse.js` become
+- Trees/farmhouses: `src/tree.js` and `src/farmhouse.js` become
   thin loaders + instance factories; `placeTrees`/`placeFarmhouses` are removed.
   New `src/objects.js` (new) renders level objects from manifest + level.json,
   registering colliders in the same shape ({ x, z, r }).
@@ -199,11 +199,9 @@ Grass (`src/grass.js`):
   'crops' gets a subtle ground tint; richer per-region sprites are a later pass).
 - No changes to grass fragment shader or lighting.
 
-River/bridge/obstacles that are NOT level objects (none for MVP — rocks/ruins
-are rocks/ruins, keep as ambient scatter? NO — see below):
-- Rocks/ruins: they are world objects. MVP: EXCLUDE rocks/ruins from level.json
-  for now (keep buildWorld's obstacle rendering as the static ambient decoration
-  that it is today). Level objects start with tree/farmhouse. Add rock/ruin
+River/bridge that are NOT level objects (none for MVP — placeholder rocks/ruins
+were removed; future rocks/ruins are level objects):
+- Rocks/ruins: they are level objects. Level objects start with tree/farmhouse. Add rock/ruin
   support in the editor in a follow-up if desired. This keeps the MVP small.
 
 ## First level.json — export of the current procedural world
@@ -211,7 +209,7 @@ are rocks/ruins, keep as ambient scatter? NO — see below):
 Script `scripts/export_level.mjs` (plain Node, no deps; reads only world.js/
 scale.js constants + a few math helpers replicated inline):
 - Re-runs the current deterministic scatter (same mulberry32(1337) + seed
-  sequence) for trees/farmhouses/obstacles to produce the initial object list.
+  sequence) for trees/farmhouses to produce the initial object list.
   It does not import the built game; it reproduces the same seed and loop
   structure, or imports world.js via a small vite-node/esm loader if that is
   easy. If that proves too coupled, hand-author the first level.json with a

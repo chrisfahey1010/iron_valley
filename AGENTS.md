@@ -1,6 +1,6 @@
 # Iron Valley
 
-Low-poly 3D tank valley (Three.js + Vite, no backend, no external assets). A 1 km x 1 km world — terrain, winding river with placeholder bridge, rocks/ruins, trees, German Fachwerk farmhouses. Take the valley, destroy all enemy armor.
+Low-poly 3D tank valley (Three.js + Vite, no backend, no external assets). A 1 km x 1 km world — terrain, winding river with placeholder bridge, trees, German Fachwerk farmhouses. Take the valley, destroy all enemy armor.
 
 ## Dev environment
 
@@ -19,7 +19,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch min/max), keyed by modelKey; consumed by tank.js `trackAim` and by the player/AI aim code in main.js. Add new vehicles here.
-- `world.js` — 1 km terrain height fn, river centerline + bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
+- `world.js` — 1 km terrain height fn, river centerline + bridge, scenery, object/river/border collision
 - `roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM); built after `buildWorld`
 - `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter; also suppresses grass on road ribbons
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
@@ -62,5 +62,5 @@ How to work here:
 - Regions: polygons; types `grasslands` (implicit default), `pasture`, `crops`, `clearing`, `forest`. `forest` keeps the grassland tint and scatters trees via `src/forest.js` (seeded, deterministic, editor-time generation; density = trees per 100m x 100m tile, default 50; min 3 m spacing) — generated trees are ordinary `tree` objects with `<regionId>-tree-N` ids and must be deleted on region type change/delete. Roads: polylines; types `gravel`, `dirt`. Both rendered flat-color in the editor.
 - Objects: `tree`, `farmhouse` (more manifest entries with an `editor` block appear automatically in the editor's object palette — no editor-code changes needed). Objects sit on existing terrain height; `scale` multiplies manifest footprint; rotation in radians; ids are stable — agents must preserve ids when editing this file. The editor displays/edits rotation and spawn headings in degrees (0–360, needle matches the on-canvas heading tick) while storing radians internally.
 - Editor save: dev mode POSTs to `/__level-save` (Vite middleware overwrites `public/level.json`); static builds fall back to download.
-- Game loads `public/level.json` at startup via `src/level.js` (`loadLevel`); spawns, object placement and ground tinting/grass culling are driven by it. Rocks/ruins remain static ambient scatter (not level objects, yet).
+- Game loads `public/level.json` at startup via `src/level.js` (`loadLevel`); spawns, object placement and ground tinting/grass culling are driven by it. Placeholder rocks/ruins were removed; future rocks/ruins will be level objects.
 - To regenerate/replace the initial level, hand-edit `public/level.json` (a full deterministic export of the old procedural scatter is a documented follow-up).

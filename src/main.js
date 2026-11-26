@@ -473,7 +473,7 @@ function update(dt) {
         r.target.damage(dmg);
       }
       const kind = r.reason === 'tank' || r.reason === 'wreck' ? 'tank'
-        : r.reason === 'farmhouse' || r.reason === 'tree' || r.reason === 'obstacle' ? 'rock'
+        : r.reason === 'farmhouse' || r.reason === 'tree' ? 'rock'
         : 'terrain';
       if (r.impactPoint) playImpactAt(kind, r.impactPoint, camera.position);
       shells[i].dispose();

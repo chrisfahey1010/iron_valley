@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-26 — placeholder boulders/ruins removed
+
+- **src/world.js** — deleted the seeded obstacle scatter (`placeObstacles`, `mulberry32`/`rng`), the boulder/ruin mesh render loop in `buildWorld`, and obstacle entries from `resolveObstacles`. Collision now covers level objects, tree trunks, farmhouse boxes, wrecks, river and border. `resolveObstacles` keeps its (broader) name.
+- **src/ground.js** — grass culling no longer references obstacles.
+- **src/shells.js** — shell trajectory/impact tests no longer test rock-sphere obstacles; farmhouse/tree hits still report rock-style impacts.
+- **src/main.js** — removed the `'obstacle'` reason branch (farmhouse/tree still map to the rock impact SFX).
+- **README.md / AGENTS.md / docs/GRASS_PLAN.md / docs/LEVEL_EDITOR_PLAN.md** — docs updated; rocks/ruins are now planned as level objects, not static ambient scatter.
+
 ## 2026-11-26 — main-menu preview camera: editor-controlled `menuCamera`
 
 - **public/level.json** — new top-level `menuCamera` block: `{ x, z, altitude, yaw, pitch }` (world meters, radians — same conventions as spawns). Default (when missing/invalid) is a 40 m aerial shot 35 m behind the player spawn, pitched −30° toward the spawn area.

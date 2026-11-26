@@ -1,8 +1,6 @@
-// World: 1km x 1km low-poly valley terrain, winding river + placeholder bridge,
-// obstacles (rocks/ruins), scenery.
+// World: 1km x 1km low-poly valley terrain, winding river + placeholder bridge.
 //
 // Key design points (extensible for town/farmhouses later):
-//  - seeded RNG for deterministic obstacle scatter
 //  - river centerline is a pure function of z (riverCenterX) so scenery,
 //    water, terrain carve and collision all agree
 //  - terrainHeight() includes the bridge deck override, so tanks, shells and
@@ -40,18 +38,6 @@ function inBridgeSpan(x, z, pad = 0) {
          Math.abs(x - BRIDGE.x) < BRIDGE.halfSpan + pad;
 }
 
-// ---- Deterministic RNG ----
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-export const rng = mulberry32(1337);
-
 // ---- Terrain ----
 function baseTerrain(x, z) {
   return 3.0 * Math.sin(x * 0.008 + 1.3) * Math.cos(z * 0.006 - 0.6)
@@ -81,23 +67,6 @@ export function terrainHeight(x, z) {
   }
   return h;
 }
-
-// ---- Obstacles (circles + meshes) ----
-function placeObstacles() {
-  const list = [];
-  let guard = 0;
-  while (list.length < 16 && guard++ < 400) {
-    const x = (rng() * 2 - 1) * (HALF - 60);
-    const z = (rng() * 2 - 1) * (HALF - 60);
-    if (Math.hypot(x - SPAWN.x, z - SPAWN.z) < 45) continue;
-    if (riverDist(x, z) < 30) continue;
-    if (Math.abs(z - BRIDGE.z) < 26 && Math.abs(x - BRIDGE.x) < BRIDGE.halfSpan + 12) continue;
-    if (list.some(o => Math.hypot(o.x - x, o.z - z) < 38)) continue;
-    list.push({ x, z, r: 2.6 + rng() * 1.6, kind: rng() < 0.65 ? 'rock' : 'ruin', seed: rng() * 100 });
-  }
-  return list;
-}
-export const obstacles = placeObstacles();
 
 // Collision circles — registered by src/objects.js during placement.
 export const treeColliders = [];      // small trunk circles (leaves are passable)
@@ -223,32 +192,6 @@ export function buildWorld(scene, level = null) {
   }
   scene.add(bridgeGroup);
 
-  // Obstacles
-  const rockGeo = new THREE.IcosahedronGeometry(1, 0);
-  const ruinMat = new THREE.MeshLambertMaterial({ color: 0x6b6257, flatShading: true });
-  const rockMat = new THREE.MeshLambertMaterial({ color: 0x6e6257, flatShading: true });
-  for (const o of obstacles) {
-    const base = terrainHeight(o.x, o.z);
-    const r = mulberry32(Math.floor(o.seed * 1e6));
-    if (o.kind === 'rock') {
-      const m = new THREE.Mesh(rockGeo, rockMat);
-      m.position.set(o.x, base + o.r * 0.55, o.z);
-      m.scale.set(o.r, o.r * 0.85, o.r * 0.9);
-      m.rotation.set(r() * 0.6, r() * Math.PI, r() * 0.4);
-      m.castShadow = true; m.receiveShadow = true;
-      scene.add(m);
-    } else {
-      for (let i = 0; i < 3; i++) {
-        const hgt = 1.6 + r() * 1.6;
-        const w = new THREE.Mesh(new THREE.BoxGeometry(0.6, hgt, 1.8), ruinMat);
-        const ang = (i / 3) * Math.PI * 2 + r() * 0.5;
-        w.position.set(o.x + Math.cos(ang) * o.r * 0.5, base + hgt / 2, o.z + Math.sin(ang) * o.r * 0.5);
-        w.rotation.y = ang;
-        w.castShadow = true; w.receiveShadow = true;
-        scene.add(w);
-      }
-    }
-  }
 }
 
 export function isOnBridge(x, z) {
@@ -287,10 +230,10 @@ export function pushOutOfBox(pos, radius, box) {
   return true;
 }
 
-// Tank collision: push circle out of obstacles, tree trunks, farmhouse boxes, wrecks, river bank, border.
+// Tank collision: push circle out of objects, tree trunks, farmhouse boxes, wrecks, river bank, border.
 export function resolveObstacles(pos, radius) {
   const nearTrees = treesNear(pos.x, pos.z, radius);
-  for (const o of [obstacles, objectColliders, deadTankColliders]) {
+  for (const o of [objectColliders, deadTankColliders]) {
     for (const c of o) {
       const dx = pos.x - c.x, dz = pos.z - c.z;
       const d = Math.hypot(dx, dz);

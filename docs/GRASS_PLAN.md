@@ -25,17 +25,17 @@ Pure function `groundZone(x, z)` in `src/ground.js`, reading world.js data (rive
 - `'riverbank'` — within RIVER_HALF_WIDTH + bank band (~6 m)
 - `'spawn'` — flattened spawn disc (no grass needed, keep clean/readable)
 - `'rim'` — steep valley rim (height above threshold or near border)
-- `'clearing'` — obstacle footprints (rocks, ruins) — excluded from scatter
+- `'clearing'` — object footprints (trees, farmhouses, level objects) — excluded from scatter
 - `'grass'` — everything else (default)
 
-Also `isObstacleAt(x, z, extra)` via exported obstacles/treeColliders.
+Also `isObstacleAt(x, z, extra)` via exported treeColliders/farmhouseColliders/objectColliders.
 
 ### 2. Terrain material upgrade — `src/world.js` (edit in place)
 Replace flat vertex-color `MeshLambertMaterial` with a `MeshLambertMaterial`/`MeshStandardMaterial` that keeps vertex colors AND multiplies a tiled grass texture (`map`). Keep vertex colors for elevation/riverbed darkening as a secondary tint, river carve and bridge override unchanged. River water and bridge unchanged.
 
 ### 3. Instanced grass tufts — `src/grass.js` (new, ~150-200 lines)
 
-- Seeded scatter: reuse world.js `rng` pattern (import or small local mulberry32 variant with its own seed). ~80k tufts across playable bounds. Reject by `groundZone(...)` != 'grass'. Reject too close to spawn/obstacles/river/bridge/trees (reuse treeColliders).
+- Seeded scatter: reuse world.js `rng` pattern (import or small local mulberry32 variant with its own seed). ~80k tufts across playable bounds. Reject by `groundZone(...)` != 'grass'. Reject too close to spawn/objects/river/bridge/trees (reuse treeColliders).
 - Each tuft = 2 crossed quads (geometry of 2 quads crossed at 90°, each quad ~1.2 m tall × 1.2 m wide). Instanced via `InstancedMesh` with a per-instance color/scale/phase attribute.
 - Material: `ShaderMaterial` (or `MeshLambertMaterial` with `onBeforeCompile` injection) supporting:
   - runtime-generated / repo-committed blade sprite texture, `alphaTest: 0.5` (sharp up close, no depth-sort issues)

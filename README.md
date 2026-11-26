@@ -46,7 +46,7 @@ Aiming (War Thunder style): the mouse controls the **green ring** — the aiming
 
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
 - `src/roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM)
-- `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, obstacles (rocks/ruins), scenery, obstacle/river/border collision
+- `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, scenery, object/river/border collision
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
 - `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage, `trackAim()` limited-rate turret/barrel tracking
@@ -72,7 +72,7 @@ Tank assets are built with Blender (headless, see `assets_src/panzer_iv/build_pa
 
 Tree assets are built with Blender (headless, see `assets_src/tree/build.py`) and loaded via `src/tree.js`. The tree GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter; `loadTreeModel()` scales the mesh to `heightM`, and `placeTrees()` roots instances at `terrainHeight(x, z)` with rotation around Y only (trees stand straight up; no tilt). ~130 trees total: valley-edge clusters plus random singles (spawn clear, kept off the river and bridge), rooted on slope-safe terrain samples and sunk slightly into the ground; tree trunks are collidable.
 
-Farmhouse assets are built with Blender (headless, see `assets_src/farmhouse/build.py`) and loaded via `src/farmhouse.js`. The GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter (14 m footprint, ~10.5 m with chimney); `loadFarmhouseModel()` scales the mesh so the footprint's long axis equals `lengthM` (14 m), and `placeFarmhouses()` roots instances at `terrainHeight(x, z)` with a random Y rotation and slight scale variance (0.9–1.1). ~12 farmhouses total: ~4 near the player spawn (~55–115 m ring) and the rest spread across the valley — spawn clear, kept off the river, bridge, obstacles and trees, and sunk slightly into the ground; a circle collider (r = 8.5 m) per instance. The game renders them flat-shaded alongside the other low-poly assets.
+Farmhouse assets are built with Blender (headless, see `assets_src/farmhouse/build.py`) and loaded via `src/farmhouse.js`. The GLB is authored with its origin at ground level and exported with 1 game unit = 1 meter (14 m footprint, ~10.5 m with chimney); `loadFarmhouseModel()` scales the mesh so the footprint's long axis equals `lengthM` (14 m), and `placeFarmhouses()` roots instances at `terrainHeight(x, z)` with a random Y rotation and slight scale variance (0.9–1.1). ~12 farmhouses total: ~4 near the player spawn (~55–115 m ring) and the rest spread across the valley — spawn clear, kept off the river, bridge and trees, and sunk slightly into the ground; a circle collider (r = 8.5 m) per instance. The game renders them flat-shaded alongside the other low-poly assets.
 
 Collision radius is derived per-tank via `tankRadius(lengthM)` (player M24 at 5 m, enemies at 6 m). Camera distances are tuned for 6 m tanks (CAM_DIST 13, CAM_HEIGHT 7.0).
 

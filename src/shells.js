@@ -1,6 +1,6 @@
 // Shell simulation: gravity, segmented collision, trail, impact FX.
 import * as THREE from 'three';
-import { terrainHeight, obstacles, treeColliders, treesNear, farmhouseColliders, deadTankColliders, WORLD_SIZE } from './world.js';
+import { terrainHeight, treeColliders, treesNear, farmhouseColliders, deadTankColliders, WORLD_SIZE } from './world.js';
 
 function logImpact(o){ if (typeof window!=='undefined' && window.__iv) { if (!Array.isArray(window.__iv.impacts)) window.__iv.impacts=[]; window.__iv.impacts.push(o); } }
 
@@ -41,14 +41,6 @@ export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
       // terrain
       if (q.y <= terrainHeight(q.x, q.z) + 0.1) {
         return { point: q, hitTank: null, hitObstacle: 'terrain' };
-      }
-      // obstacles (rocks/ruins as spheres)
-      for (const o of obstacles) {
-        const base = terrainHeight(o.x, o.z);
-        const c = new THREE.Vector3(o.x, base + o.r * 0.8, o.z);
-        if (q.distanceTo(c) < o.r) {
-          return { point: q, hitTank: null, hitObstacle: 'rock' };
-        }
       }
       // farmhouses (rock-impact style hit)
       for (const b of farmhouseColliders) {
@@ -118,16 +110,6 @@ export class Shell {
         this.impact(q);
         logImpact({reason:'terrain',x:q.x,y:q.y,z:q.z});
         return { consumed: true, reason: 'terrain', impactPoint: q };
-      }
-      // obstacles
-      for (const o of obstacles) {
-        const base = terrainHeight(o.x, o.z);
-        const c = new THREE.Vector3(o.x, base + o.r * 0.8, o.z);
-        if (q.distanceTo(c) < o.r) {
-          this.impact(q);
-          logImpact({reason:'obstacle',x:q.x,y:q.y,z:q.z});
-          return { consumed: true, reason: 'obstacle', impactPoint: q };
-        }
       }
       // farmhouses (rock-impact style hit)
       for (const b of farmhouseColliders) {
