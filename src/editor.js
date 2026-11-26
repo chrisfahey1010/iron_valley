@@ -482,6 +482,47 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
+// ---------- degrees helpers ----------
+const radToDeg = r => { const d = (r * 180 / Math.PI) % 360; return (d + 360) % 360; };
+const degToRad = d => d * Math.PI / 180;
+function fmtDeg(r) { return Math.round(radToDeg(r) * 10) / 10; }
+function makeDialSvg(deg) {
+  const ticks = [];
+  for (let i = 0; i < 12; i++) {
+    const a = i * 30 * Math.PI / 180;
+    const big = i % 3 === 0;
+    const r1 = big ? 24 : 26, r2 = 29;
+    ticks.push(`<line x1="${32 + Math.sin(a) * r1}" y1="${32 + Math.cos(a) * r1}" x2="${32 + Math.sin(a) * r2}" y2="${32 + Math.cos(a) * r2}" stroke="${big ? '#c8c4b8' : '#555b66'}" stroke-width="${big ? 1.6 : 1}"/>`);
+  }
+  return `<svg class="deg-dial" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#252932" stroke="#343a45"/>${ticks.join('')}<g class="deg-needle" transform="rotate(${deg} 32 32)"><line x1="32" y1="32" x2="32" y2="53" stroke="#4dd0e1" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="32" cy="32" r="3" fill="#e8e4da"/></svg>`;
+}
+function mkDegreeField(label, getRad, setRad) {
+  const wrap = document.createElement('label');
+  wrap.className = 'deg-field';
+  wrap.textContent = label;
+  const row = document.createElement('div');
+  row.className = 'deg-row';
+  const dial = makeDialSvg(radToDeg(getRad()));
+  const dialHost = document.createElement('span');
+  dialHost.innerHTML = dial;
+  dialHost.firstChild && row.appendChild(dialHost.firstChild);
+  const i = document.createElement('input');
+  i.type = 'number'; i.step = '1'; i.min = '0'; i.max = '360';
+  i.value = String(fmtDeg(getRad()));
+  i.addEventListener('change', () => {
+    const d = parseFloat(i.value);
+    const deg = isNaN(d) ? 0 : ((d % 360) + 360) % 360;
+    pushHistory();
+    setRad(degToRad(deg));
+    i.value = String(Math.round(deg * 10) / 10);
+    row.querySelector('.deg-needle').setAttribute('transform', `rotate(${deg} 32 32)`);
+    draw();
+  });
+  row.appendChild(i);
+  wrap.appendChild(row);
+  propertiesEl.appendChild(wrap);
+}
+
 // ---------- properties panel ----------
 function renderProperties() {
   propertiesEl.innerHTML = '';
@@ -514,7 +555,7 @@ function renderProperties() {
     mkField('ID', input('text', o.id, v => { pushHistory(); o.id = uniqueObjectId(v, o); draw(); }));
     mkField('X', input('number', o.x, v => { pushHistory(); o.x = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Z', input('number', o.z, v => { pushHistory(); o.z = parseFloat(v) || 0; draw(); }, 0.1));
-    mkField('Rotation (rad)', input('number', o.rotation ?? 0, v => { pushHistory(); o.rotation = parseFloat(v) || 0; draw(); }, 0.01));
+    mkDegreeField('Rotation (°)', () => o.rotation ?? 0, rad => { o.rotation = rad; });
     mkField('Scale', input('number', o.scale ?? 1, v => { pushHistory(); o.scale = Math.max(0.1, parseFloat(v) || 1); draw(); }, 0.05));
     const del = document.createElement('button');
     del.textContent = 'Delete object';
@@ -527,7 +568,7 @@ function renderProperties() {
     propertiesEl.appendChild(title);
     mkField('X', input('number', p.x, v => { pushHistory(); p.x = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Z', input('number', p.z, v => { pushHistory(); p.z = parseFloat(v) || 0; draw(); }, 0.1));
-    mkField('Heading (rad)', input('number', p.heading ?? 0, v => { pushHistory(); p.heading = parseFloat(v) || 0; draw(); }, 0.01));
+    mkDegreeField('Heading (°)', () => p.heading ?? 0, rad => { p.heading = rad; });
   } else if (selected.kind === 'spawn-enemy') {
     const e = level.spawns.enemies[selected.index];
     if (!e) { selected = null; renderProperties(); return; }
@@ -536,7 +577,7 @@ function renderProperties() {
     propertiesEl.appendChild(title);
     mkField('X', input('number', e.x, v => { pushHistory(); e.x = parseFloat(v) || 0; draw(); }, 0.1));
     mkField('Z', input('number', e.z, v => { pushHistory(); e.z = parseFloat(v) || 0; draw(); }, 0.1));
-    mkField('Heading (rad)', input('number', e.heading ?? 0, v => { pushHistory(); e.heading = parseFloat(v) || 0; draw(); }, 0.01));
+    mkDegreeField('Heading (°)', () => e.heading ?? 0, rad => { e.heading = rad; });
     const del = document.createElement('button');
     del.textContent = 'Delete enemy spawn';
     del.addEventListener('click', () => { pushHistory(); level.spawns.enemies.splice(selected.index, 1); selected = null; draw(); renderProperties(); });
