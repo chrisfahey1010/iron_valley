@@ -20,6 +20,7 @@ let camera = { x: 0, z: -350, scale: 0.9 }; // scale = px per meter
 let tool = 'select';            // select | object | region | road | spawn-player | spawn-enemy
 let selected = null;            // { kind, id?, index? }
 let pendingPoints = [];         // in-progress region/road
+let hoverVertex = null;        // { id, index } of selected-region vertex under cursor
 let drag = null;                // { type:'pan'|'object'|'spawn'|'vertex', ... }
 let history = [];
 const MAX_HISTORY = 20;
@@ -390,7 +391,9 @@ function draw() {
       ctx.strokeStyle = '#4dd0e1'; ctx.lineWidth = 2; ctx.stroke();
       for (let i = 0; i < r.points.length; i++) {
         const sp = worldToScreen(r.points[i][0], r.points[i][1]);
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2); ctx.fillStyle = '#4dd0e1'; ctx.fill();
+        const hov = hoverVertex && hoverVertex.id === r.id && hoverVertex.index === i;
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, hov ? 6 : 4, 0, Math.PI * 2); ctx.fillStyle = hov ? '#ffffff' : '#4dd0e1'; ctx.fill();
+        if (hov) { ctx.strokeStyle = '#4dd0e1'; ctx.lineWidth = 1.5; ctx.stroke(); }
       }
     }
   } else if (selected && selected.kind === 'road') {
@@ -665,9 +668,19 @@ function getPos(e) {
   return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
 }
 
-canvas.addEventListener('mousedown', e => {
+canvas.addEventListener('mousedown', e => { hoverVertex = null;
   const { sx, sy } = getPos(e);
   const w = screenToWorld(sx, sy);
+
+  // vertex drag wins even when the click is outside the polygon — only the
+  // vertex's own hit radius matters
+  const v = e.button === 0 && tool === 'select' ? vertexAt(sx, sy) : null;
+  if (v) {
+    drag = { type: 'vertex', ...v, moved: false };
+    selected = v.kind === 'region-vertex' ? { kind: 'region', id: v.id } : { kind: 'road', id: v.id };
+    draw(); renderProperties();
+    return;
+  }
 
   if (e.button === 1 || (e.button === 0 && tool === 'select' && !hitTest(sx, sy, w))) {
     drag = { type: 'pan', startSx: sx, startSy: sy, camStartX: camera.x, camStartZ: camera.z };
@@ -680,15 +693,6 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
   if (e.button !== 0) return;
-
-  // vertex drag
-  const v = vertexAt(sx, sy);
-  if (v && tool === 'select') {
-    drag = { type: 'vertex', ...v, moved: false };
-    selected = v.kind === 'region-vertex' ? { kind: 'region', id: v.id } : { kind: 'road', id: v.id };
-    draw(); renderProperties();
-    return;
-  }
 
   if (tool === 'region') {
     if (pendingPoints.length >= 3 && Math.hypot(pendingPoints[0][0] - w.x, pendingPoints[0][1] - w.z) < 12 / camera.scale) {
@@ -810,11 +814,16 @@ canvas.addEventListener('mousemove', e => {
       }
     }
   } else {
+    hoverVertex = null;
+    if (selected && selected.kind === 'region' && tool === 'select') {
+      const v = vertexAt(sx, sy);
+      if (v && v.kind === 'region-vertex' && v.id === selected.id) hoverVertex = v;
+    }
     draw(); // keep cursor coords visible
   }
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('mouseup', () => { hoverVertex = null;
   if (drag && drag.moved && (drag.type === 'region-move' || (drag.type === 'vertex' && drag.kind === 'region-vertex'))) {
     const id = drag.type === 'region-move' ? drag.id : drag.id;
     const r = level.terrain.regions.find(r => r.id === id);

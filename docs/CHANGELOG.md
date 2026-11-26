@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-25 — vertex hover highlight + outside-polygon vertex drag
+
+- **src/editor.js** — hovering a selected region's vertex (within ~10 px) renders it white (slightly larger, cyan outline); idle vertices remain cyan. Hover recomputes on mousemove, is cleared on mousedown/mouseup, and only applies to the selected region.
+- **src/editor.js** — vertex drags are now started before the pan/hit-test branch, so clicking a vertex's radius starts a drag even when the click lands outside the polygon.
+
 ## 2026-11-25 — region resizing: vertex + whole-polygon drag, forest auto-regeneration
 
 - **src/editor.js** — terrain regions are now resizable: drag a polygon vertex to reshape it, or drag the polygon body (select tool) to move the whole polygon. One history snapshot per drag. When a `forest` region is reshaped (vertex drag or body move), its generated trees (`<regionId>-tree-N`) are removed and re-scattered deterministically via `generateForestTrees` (same seeded layout for an unchanged region size; `statusHint` reports the new count). Manual tree edits/deletes remain untouched.
