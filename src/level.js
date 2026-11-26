@@ -49,7 +49,7 @@ export function validateLevel(raw) {
       const type = REGION_TYPES.includes(r.type) ? r.type : null;
       if (!type) { warn('unknown region type, dropping', r.id, r.type); continue; }
       const region = { id: String(r.id || 'region'), type, points: r.points.map(p => [Number(p[0]), Number(p[1])]) };
-      if (type === 'forest') region.density = Number(r.density) > 0 ? Number(r.density) : 11;
+      if (type === 'forest') region.density = Number(r.density) > 0 ? Number(r.density) : 50;
       out.terrain.regions.push(region);
     }
   }

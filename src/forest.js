@@ -4,7 +4,7 @@
 // and calling generateForestTrees again.
 import { riverDist, RIVER_HALF_WIDTH } from './world.js';
 
-export const DEFAULT_FOREST_DENSITY = 11; // trees per 100m x 100m tile
+export const DEFAULT_FOREST_DENSITY = 50; // trees per 100m x 100m tile
 export const MIN_TREE_SPACING = 3;        // m between tree trunks
 
 export function forestTreeIdPrefix(regionId) {
