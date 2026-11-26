@@ -42,7 +42,7 @@ export function groundZone(x, z, level = null) {
   if (isObstacleAt(x, z, 1.5)) return 'clearing';
   if (level) {
     const region = regionAt(level, x, z);
-    if (region !== 'grasslands') return 'clearing';
+    if (region !== 'grasslands' && region !== 'forest') return 'clearing';
     if (roadAt(level, x, z)) return 'clearing';
   }
   return 'grass';

@@ -4,6 +4,7 @@
 import { ASSETS } from './scale.js';
 import { WORLD_SIZE, HALF, PLAY_BOUND, riverCenterX, BRIDGE, RIVER_HALF_WIDTH } from './world.js';
 import { loadLevel, validateLevel, defaultLevel, REGION_TYPES, ROAD_TYPES, REGION_COLORS } from './level.js';
+import { generateForestTrees, regionArea, DEFAULT_FOREST_DENSITY } from './forest.js';
 
 // ---------- DOM ----------
 const canvas = document.getElementById('game-canvas');
@@ -41,7 +42,7 @@ function nextFreeObjectId(type) {
   return `${type}-${n}`;
 }
 
-const REGION_COLORS_CSS = { grasslands: '#49683a', pasture: '#8a8452', crops: '#6b7a3a', clearing: '#9a8460' };
+const REGION_COLORS_CSS = { grasslands: '#49683a', pasture: '#8a8452', crops: '#6b7a3a', clearing: '#9a8460', forest: '#49683a' };
 const ROAD_COLORS_CSS = { gravel: '#8b8578', dirt: '#7a6a4f' };
 const ROAD_WIDTH_DEFAULT = { gravel: 4, dirt: 3 };
 
@@ -188,7 +189,7 @@ function buildPalette() {
   // terrain regions
   {
     const h = document.createElement('div'); h.innerHTML = '<h3>Terrain regions</h3>'; paletteEl.appendChild(h);
-    for (const t of ['pasture', 'crops', 'clearing']) {
+    for (const t of ['pasture', 'crops', 'clearing', 'forest']) {
       const b = document.createElement('button');
       b.className = 'tool-btn'; b.dataset.tool = 'region'; b.dataset.region = t;
       b.textContent = `Region: ${t}`;
@@ -544,10 +545,48 @@ function renderProperties() {
     title.textContent = 'Region';
     propertiesEl.appendChild(title);
     mkField('ID', input('text', r.id, v => { pushHistory(); r.id = v; draw(); }));
-    mkField('Type', select(['pasture', 'crops', 'clearing'], r.type, v => { pushHistory(); r.type = v; draw(); }));
+    mkField('Type', select(['pasture', 'crops', 'clearing', 'forest'], r.type, v => {
+      pushHistory();
+      if (r.type === 'forest' && v !== 'forest') removeGeneratedTrees(r.id);
+      r.type = v;
+      if (v === 'forest' && !(Number(r.density) > 0)) r.density = DEFAULT_FOREST_DENSITY;
+      draw(); renderProperties();
+    }));
+    if (r.type === 'forest') {
+      const area = regionArea(r.points);
+      const existing = generatedTreesFor(r.id).length;
+      const density = Number(r.density) > 0 ? Number(r.density) : DEFAULT_FOREST_DENSITY;
+      const expect = Math.round(density * area / 10000);
+
+      mkField('Density (trees / 100m×100m)', input('number', density, v => { pushHistory(); r.density = Math.max(0.5, parseFloat(v) || DEFAULT_FOREST_DENSITY); draw(); renderProperties(); }, 0.5));
+
+      const info = document.createElement('div');
+      info.className = 'empty-note';
+      info.innerHTML = `Area: ~${Math.round(area)} m² &nbsp;·&nbsp; Target: ~${expect} trees &nbsp;·&nbsp; Placed: ${existing}`;
+      propertiesEl.appendChild(info);
+
+      const gen = document.createElement('button');
+      gen.textContent = 'Generate trees';
+      gen.addEventListener('click', () => {
+        pushHistory();
+        removeGeneratedTrees(r.id);
+        const res = generateForestTrees(level, r);
+        level.objects.push(...res.trees);
+        draw(); renderProperties();
+        statusHint.textContent = `Generated ${res.placed}/${res.target} trees` + (res.failed ? ` (${res.failed} blocked)` : '');
+      });
+      propertiesEl.appendChild(gen);
+
+      if (existing > 0) {
+        const clr = document.createElement('button');
+        clr.textContent = 'Clear generated trees';
+        clr.addEventListener('click', () => { pushHistory(); removeGeneratedTrees(r.id); draw(); renderProperties(); });
+        propertiesEl.appendChild(clr);
+      }
+    }
     const rm = document.createElement('button');
     rm.textContent = 'Delete region';
-    rm.addEventListener('click', () => { pushHistory(); level.terrain.regions = level.terrain.regions.filter(x => x.id !== r.id); selected = null; draw(); renderProperties(); });
+    rm.addEventListener('click', () => { pushHistory(); removeGeneratedTrees(r.id); level.terrain.regions = level.terrain.regions.filter(x => x.id !== r.id); selected = null; draw(); renderProperties(); });
     propertiesEl.appendChild(rm);
   } else if (selected.kind === 'road') {
     const r = level.terrain.roads.find(r => r.id === selected.id);
@@ -732,7 +771,10 @@ function closeRegion() {
   if (!type) return;
   if (pendingPoints.length < 3) { pendingPoints = []; draw(); return; }
   pushHistory();
-  level.terrain.regions.push({ id: `${type}-${Date.now().toString(36)}`, type, points: pendingPoints.slice() });
+  const region = { id: `${type}-${Date.now().toString(36)}`, type, points: pendingPoints.slice() };
+  if (type === 'forest') region.density = DEFAULT_FOREST_DENSITY;
+  level.terrain.regions.push(region);
+  selected = { kind: 'region', id: region.id };
   pendingPoints = [];
   draw(); renderProperties();
 }
@@ -820,12 +862,22 @@ function finishRoad() {
   draw(); renderProperties();
 }
 
+function regionTreeIdPrefix(regionId) { return `${regionId}-tree-`; }
+function generatedTreesFor(regionId) {
+  const prefix = regionTreeIdPrefix(regionId);
+  return level.objects.filter(o => o.type === 'tree' && String(o.id).startsWith(prefix));
+}
+function removeGeneratedTrees(regionId) {
+  const prefix = regionTreeIdPrefix(regionId);
+  level.objects = level.objects.filter(o => !(o.type === 'tree' && String(o.id).startsWith(prefix)));
+}
+
 function deleteSelected() {
   if (!selected) return;
   pushHistory();
   if (selected.kind === 'object') level.objects.splice(selected.index, 1);
   else if (selected.kind === 'spawn-enemy') level.spawns.enemies.splice(selected.index, 1);
-  else if (selected.kind === 'region') level.terrain.regions = level.terrain.regions.filter(r => r.id !== selected.id);
+  else if (selected.kind === 'region') { removeGeneratedTrees(selected.id); level.terrain.regions = level.terrain.regions.filter(r => r.id !== selected.id); }
   else if (selected.kind === 'road') level.terrain.roads = level.terrain.roads.filter(r => r.id !== selected.id);
   else if (selected.kind === 'spawn-player') { /* keep player spawn; ignore delete */ }
   selected = null; draw(); renderProperties();

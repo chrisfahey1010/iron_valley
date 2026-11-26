@@ -1,7 +1,7 @@
 // Level file loading + validation + queries. Pure JS — no three.js — so the
 // editor and the game share it. Level file: public/level.json (see docs/LEVEL_EDITOR_PLAN.md).
 
-export const REGION_TYPES = ['grasslands', 'pasture', 'crops', 'clearing'];
+export const REGION_TYPES = ['grasslands', 'pasture', 'crops', 'clearing', 'forest'];
 export const ROAD_TYPES = ['gravel', 'dirt'];
 
 export const REGION_COLORS = {
@@ -9,6 +9,7 @@ export const REGION_COLORS = {
   pasture: 0x8a8452,
   crops: 0x6b7a3a,
   clearing: 0x9a8460,
+  forest: 0x49683a, // same base as grasslands (forest keeps the grass texture base)
 };
 
 export function defaultLevel() {
@@ -47,7 +48,9 @@ export function validateLevel(raw) {
       if (!r || !Array.isArray(r.points) || r.points.length < 3) { warn('dropping bad region', r?.id); continue; }
       const type = REGION_TYPES.includes(r.type) ? r.type : null;
       if (!type) { warn('unknown region type, dropping', r.id, r.type); continue; }
-      out.terrain.regions.push({ id: String(r.id || 'region'), type, points: r.points.map(p => [Number(p[0]), Number(p[1])]) });
+      const region = { id: String(r.id || 'region'), type, points: r.points.map(p => [Number(p[0]), Number(p[1])]) };
+      if (type === 'forest') region.density = Number(r.density) > 0 ? Number(r.density) : 11;
+      out.terrain.regions.push(region);
     }
   }
   if (Array.isArray(level.terrain?.roads)) {

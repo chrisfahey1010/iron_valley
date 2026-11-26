@@ -4,7 +4,9 @@ Low-poly 3D tank valley in the browser — a 1 km x 1 km world with a winding ri
 
 ## Level editor & level file
 
-`npm run dev` serves both the game (`/`) and the level editor (`/editor.html`). The editor paints terrain regions (pasture/crops/clearing), gravel/dirt roads, places/moves/rotates/deletes objects (trees, farmhouses) and spawns (player + enemies), and Save overwrites `public/level.json` (dev: in-place POST; static build: download). `public/level.json` is the source of truth — agents can edit it directly. Coordinates: x east, z south, origin at world center, 1 unit = 1 m.
+`npm run dev` serves both the game (`/`) and the level editor (`/editor.html`). The editor paints terrain regions (pasture/crops/clearing/forest), gravel/dirt roads, places/moves/rotates/deletes objects (trees, farmhouses) and spawns (player + enemies), and Save overwrites `public/level.json` (dev: in-place POST; static build: download).
+
+**Forest regions**: forest is a polygon region type with the grasslands look. In the editor's properties tab for a forest region you can set the tree density (trees per 100m x 100m tile, default 11) and click **Generate trees** — this deterministically scatters tree objects (seeded by region id; min 3 m trunk spacing, avoiding roads, the river, spawns and existing objects) and writes them into `level.json` as ordinary `tree` objects (`<regionId>-tree-N` ids). No tree randomness happens at runtime; regenerating replaces the region's generated trees. Changing the region's type or deleting it removes its generated trees; manual edits/deletes are preserved. `public/level.json` is the source of truth — agents can edit it directly. Coordinates: x east, z south, origin at world center, 1 unit = 1 m.
 
 ## Setup & run
 
@@ -49,6 +51,7 @@ Aiming (War Thunder style): the mouse controls the **green ring** — the aiming
 - `src/tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch limits), keyed by modelKey
 - `src/shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
 - `src/ground.js` — ground-zone classifier (`groundZone`): water / riverbank / spawn / rim / clearing / grass; used by grass scatter
+- `src/forest.js` — seeded forest-tree scatter: `generateForestTrees(level, region)` for `forest` regions (deterministic, min 3 m trunk spacing, avoids roads/river/spawns/objects)
 - `src/grass.js` — instanced crossed-quad grass tufts with wind sway + distance fade; seeded deterministic scatter over the playable bounds. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. No shadows from/onto grass
 - `src/audio.js` — positional shell-fire and impact SFX (speed-of-sound delay + distance attenuation); impact kind derived from shell-impact reason (tank / rock / terrain), variant picked randomly per impact
 - `src/styles.css` — HUD, cues, overlays
