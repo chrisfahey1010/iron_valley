@@ -1,6 +1,6 @@
 // Iron Valley — startup, match state, input, camera, AI, HUD, game loop.
 import * as THREE from 'three';
-import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING } from './world.js';
+import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING, deadTankColliders } from './world.js';
 import { loadLevel, validateLevel } from './level.js';
 import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects } from './objects.js';
@@ -164,6 +164,7 @@ function makeEnemies() {
 
 function resetMatch() {
   window.__iv && (window.__iv.impacts = []);
+  deadTankColliders.length = 0;
   // Clear shells and old tanks even if something below throws.
   try {
     for (const s of shells) s.dispose();
@@ -471,10 +472,20 @@ function update(dt) {
         const dmg = shells[i].owner.isPlayer ? TUNING.shellPlayerDamage : TUNING.enemy.damage;
         r.target.damage(dmg);
       }
-      const kind = r.reason === 'tank' ? 'tank' : r.reason === 'obstacle' ? 'rock' : 'terrain';
+      const kind = r.reason === 'tank' || r.reason === 'wreck' ? 'tank'
+        : r.reason === 'farmhouse' || r.reason === 'tree' || r.reason === 'obstacle' ? 'rock'
+        : 'terrain';
       if (r.impactPoint) playImpactAt(kind, r.impactPoint, camera.position);
       shells[i].dispose();
       shells.splice(i, 1);
+    }
+  }
+
+  // register newly-dead tanks as wreck colliders (permanent for the match)
+  for (const tank of [player, ...enemies]) {
+    if (tank && !tank.alive && !tank._wreckRegistered) {
+      tank._wreckRegistered = true;
+      deadTankColliders.push({ x: tank.pos.x, z: tank.pos.z, r: tank.collisionRadius });
     }
   }
 

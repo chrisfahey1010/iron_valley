@@ -2,7 +2,7 @@
 // register colliders in world.js's collider arrays.
 import * as THREE from 'three';
 import { ASSETS } from './scale.js';
-import { terrainHeight, treeColliders, farmhouseColliders, objectColliders } from './world.js';
+import { terrainHeight, treeColliders, farmhouseColliders, objectColliders, rebuildTreeGrid } from './world.js';
 import { loadTreeModel } from './tree.js';
 import { loadFarmhouseModel } from './farmhouse.js';
 
@@ -53,12 +53,18 @@ export function placeObjects(scene, level, sources) {
     scene.add(inst);
     placed.push(o);
     if (editorMeta.collidable !== false) {
-      const collider = { x: o.x, z: o.z, r: r * scale };
-      if (o.type === 'tree') treeColliders.push(collider);
-      else if (o.type === 'farmhouse') farmhouseColliders.push(collider);
-      else objectColliders.push(collider);
+      if (o.type === 'tree') {
+        // trunk-only circle; canopy is passable
+        treeColliders.push({ x: o.x, z: o.z, r: 0.65 * scale, base: base });
+      } else if (o.type === 'farmhouse') {
+        // oriented box (local X = model length axis), slightly trimmed to its edges
+        farmhouseColliders.push({ x: o.x, z: o.z, rot: o.rotation || 0, halfW: 6.7 * scale, halfD: 3.7 * scale });
+      } else {
+        objectColliders.push({ x: o.x, z: o.z, r: r * scale });
+      }
     }
   }
+  rebuildTreeGrid();
   console.log(`placed ${placed.length} objects from level`);
   return placed.length;
 }

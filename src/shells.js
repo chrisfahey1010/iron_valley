@@ -1,11 +1,30 @@
 // Shell simulation: gravity, segmented collision, trail, impact FX.
 import * as THREE from 'three';
-import { terrainHeight, obstacles, WORLD_SIZE } from './world.js';
+import { terrainHeight, obstacles, treeColliders, treesNear, farmhouseColliders, deadTankColliders, WORLD_SIZE } from './world.js';
 
 function logImpact(o){ if (typeof window!=='undefined' && window.__iv) { if (!Array.isArray(window.__iv.impacts)) window.__iv.impacts=[]; window.__iv.impacts.push(o); } }
 
 export const SHELL_SPEED = 500; // m/s — real-world shell speed
 export const GRAVITY = 9.81; // m/s² — real-world gravity
+
+function boxHit(q, b) {
+  const dx = q.x - b.x, dz = q.z - b.z;
+  const c = Math.cos(b.rot), s = Math.sin(b.rot);
+  const lx = dx * c - dz * s, lz = dx * s + dz * c;
+  if (Math.abs(lx) > b.halfW || Math.abs(lz) > b.halfD) return false;
+  const base = terrainHeight(b.x, b.z);
+  return q.y >= base - 0.5 && q.y <= base + 8;
+}
+
+
+function trunkHit(q) {
+  const near = treesNear(q.x, q.z, 0.15);
+  for (const t of near) {
+    const base = t.base ?? terrainHeight(t.x, t.z);
+    if (Math.abs(q.y - base) < 12 && (q.x - t.x) ** 2 + (q.z - t.z) ** 2 < (t.r + 0.15) ** 2) return t;
+  }
+  return null;
+}
 
 // Predict a trajectory from a muzzle pose; returns { point, hitTank, hitObstacle } or null.
 export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
@@ -29,6 +48,20 @@ export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
         const c = new THREE.Vector3(o.x, base + o.r * 0.8, o.z);
         if (q.distanceTo(c) < o.r) {
           return { point: q, hitTank: null, hitObstacle: 'rock' };
+        }
+      }
+      // farmhouses (rock-impact style hit)
+      for (const b of farmhouseColliders) {
+        if (boxHit(q, b)) return { point: q, hitTank: null, hitObstacle: 'rock' };
+      }
+      // tree trunks (leaves pass through)
+      if (trunkHit(q)) return { point: q, hitTank: null, hitObstacle: 'rock' };
+      // dead tank wrecks
+      for (const w of deadTankColliders) {
+        const base = terrainHeight(w.x, w.z);
+        const c = new THREE.Vector3(w.x, base + 1.2, w.z);
+        if (q.distanceTo(c) < w.r + 0.5) {
+          return { point: q, hitTank: { wreck: true, pos: { x: w.x, y: base, z: w.z } }, hitObstacle: null };
         }
       }
       // tanks
@@ -96,7 +129,31 @@ export class Shell {
           return { consumed: true, reason: 'obstacle', impactPoint: q };
         }
       }
-      // tanks (exclude owner)
+      // farmhouses (rock-impact style hit)
+      for (const b of farmhouseColliders) {
+        if (boxHit(q, b)) {
+          this.impact(q);
+          logImpact({reason:'farmhouse',x:q.x,y:q.y,z:q.z});
+          return { consumed: true, reason: 'farmhouse', impactPoint: q };
+        }
+      }
+      // tree trunks (leaves pass through)
+      if (trunkHit(q)) {
+        this.impact(q);
+        logImpact({reason:'tree',x:q.x,y:q.y,z:q.z});
+        return { consumed: true, reason: 'tree', impactPoint: q };
+      }
+      // dead tank wrecks (no damage, tank-style impact)
+      for (const w of deadTankColliders) {
+        const base = terrainHeight(w.x, w.z);
+        const c = new THREE.Vector3(w.x, base + 1.2, w.z);
+        if (q.distanceTo(c) < w.r + 0.5) {
+          this.impact(q);
+          logImpact({reason:'wreck',x:q.x,y:q.y,z:q.z});
+          return { consumed: true, reason: 'wreck', target: { wreck: true, pos: new THREE.Vector3(w.x, base, w.z) }, impactPoint: q };
+        }
+      }
+      // tanks (exclude owner; wrecks handled above)
       for (const tank of tanks) {
         if (tank === this.owner || !tank.alive) continue;
         const tc = new THREE.Vector3(tank.pos.x, tank.pos.y + 1.2, tank.pos.z);

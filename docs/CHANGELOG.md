@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 — farmhouse/tree/wreck collision + per-frame aim-cost fix
+
+- **src/world.js** — tree trunks are now small oriented circles (~0.65 m, canopy passes through); farmhouses are oriented boxes (≈13.4 x 7.4 m footprint, trimmed) with `pushOutOfBox` tank push-out; dead tanks are permanent wreck colliders (`deadTankColliders`) that block both tanks and shells. `resolveObstacles` pushes circles out of obstacles, trees, objects, wrecks, farmhouse boxes and the river. Fixed a zero-radius push-back edge case for tanks spawning exactly inside a circular collider. Added a uniform-grid spatial index (`rebuildTreeGrid`/`treesNear`) for tree trunks — the per-frame aim predictor and per-shell stepping used to scan all ~2800 trunks per sub-step.
+- **src/shells.js** — `predictPath` and `Shell.step` test oriented farmhouse boxes (rock-impact sound), tree trunk circles (rock-impact sound; leaves pass through) and dead-tank wrecks (shell consumed, tank-impact sound, zero damage) via a shared `trunkHit` helper.
+- **src/main.js** — `resetMatch` clears dead-tank wrecks; newly-dead tanks register a permanent wreck collider (`_wreckRegistered` guard); wreck impacts map to the tank impact SFX.
+- **src/objects.js** — registers trunk circles (with cached `base`) and oriented farmhouse boxes instead of a 7 m footprint circle; rebuilds the tree grid after placement.
+- **test_collision.mjs** — headless collision sanity suite (node): farmhouse box hit/push-out (unrotated + 90°), tree trunk hit and canopy pass-through, wreck shell/tank blocking.
+
 ## 2026-11-25 — vertex hover highlight + outside-polygon vertex drag
 
 - **src/editor.js** — hovering a selected region's vertex (within ~10 px) renders it white (slightly larger, cyan outline); idle vertices remain cyan. Hover recomputes on mousemove, is cleared on mousedown/mouseup, and only applies to the selected region.

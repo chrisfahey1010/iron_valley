@@ -100,9 +100,48 @@ function placeObstacles() {
 export const obstacles = placeObstacles();
 
 // Collision circles — registered by src/objects.js during placement.
-export const treeColliders = [];
-export const farmhouseColliders = [];
+export const treeColliders = [];      // small trunk circles (leaves are passable)
+export const farmhouseColliders = []; // oriented boxes {x,z,rot,halfW,halfD,r}
 export const objectColliders = [];
+export const deadTankColliders = [];  // wrecks: {x,z,r}
+
+// ---- Spatial index for tree trunks ----
+// Trees are the one collider array with thousands of entries; linear scans
+// in the per-frame aim predictor and per-shell stepping are the main cost.
+// A uniform grid keeps near-queries O(small). Built by placeObjects().
+const TREE_GRID_CELL = 24;
+let treeGrid = null;
+
+export function rebuildTreeGrid() {
+  treeGrid = new Map();
+  for (const t of treeColliders) {
+    const key = Math.floor(t.x / TREE_GRID_CELL) + ',' + Math.floor(t.z / TREE_GRID_CELL);
+    let arr = treeGrid.get(key);
+    if (!arr) { arr = []; treeGrid.set(key, arr); }
+    arr.push(t);
+  }
+}
+
+// Return trunk colliders whose circle may reach (x, z) — i.e. within
+// radius + t.r of the point (plus small margin). Used hot; do not pass huge radius.
+export function treesNear(x, z, radius) {
+  if (!treeGrid) return treeColliders; // grid not built yet — fall back to linear
+  const reach = radius + 0.2 + 3.0; // max trunk radius (incl. scaled forest rows) + margin
+  const minCx = Math.floor((x - reach) / TREE_GRID_CELL), maxCx = Math.floor((x + reach) / TREE_GRID_CELL);
+  const minCz = Math.floor((z - reach) / TREE_GRID_CELL), maxCz = Math.floor((z + reach) / TREE_GRID_CELL);
+  const out = [];
+  for (let cz = minCz; cz <= maxCz; cz++) {
+    for (let cx = minCx; cx <= maxCx; cx++) {
+      const arr = treeGrid.get(cx + ',' + cz);
+      if (!arr) continue;
+      for (const t of arr) {
+        const dx = t.x - x, dz = t.z - z;
+        if (dx * dx + dz * dz <= (reach + t.r) * (reach + t.r)) out.push(t);
+      }
+    }
+  }
+  return out;
+}
 
 // ---- World build ----
 export function buildWorld(scene, level = null) {
@@ -216,20 +255,68 @@ export function isOnBridge(x, z) {
   return inBridgeSpan(x, z);
 }
 
-// Tank collision: push circle out of obstacles, tree colliders, river bank, and border.
+// Push a circle out of an oriented box. Returns true if pushed.
+export function pushOutOfBox(pos, radius, box) {
+  const dx = pos.x - box.x, dz = pos.z - box.z;
+  const c = Math.cos(box.rot), s = Math.sin(box.rot);
+  const lx = dx * c - dz * s, lz = dx * s + dz * c;
+  const qx = Math.max(-box.halfW, Math.min(box.halfW, lx));
+  const qz = Math.max(-box.halfD, Math.min(box.halfD, lz));
+  const ddx = lx - qx, ddz = lz - qz;
+  const d2 = ddx * ddx + ddz * ddz;
+  if (d2 > radius * radius) return false;
+  let push;
+  if (d2 > 1e-9) {
+    const d = Math.sqrt(d2);
+    push = radius - d;
+    const ws = Math.sin(box.rot), wc = Math.cos(box.rot);
+    // local push vector rotated back to world (three.js Y rotation)
+    pos.x += (ddx / d * push * wc + ddz / d * push * ws);
+    pos.z += (ddx / d * push * -ws + ddz / d * push * wc);
+  } else {
+    // inside the box: push out along the smallest penetration axis
+    const penX = box.halfW + radius - Math.abs(lx);
+    const penZ = box.halfD + radius - Math.abs(lz);
+    let localPush = { x: 0, z: 0 };
+    if (penX < penZ) localPush = { x: Math.sign(lx || 1) * penX, z: 0 };
+    else localPush = { x: 0, z: Math.sign(lz || 1) * penZ };
+    const ws = Math.sin(box.rot), wc = Math.cos(box.rot);
+    pos.x += localPush.x * wc + localPush.z * ws;
+    pos.z += localPush.x * -ws + localPush.z * wc;
+  }
+  return true;
+}
+
+// Tank collision: push circle out of obstacles, tree trunks, farmhouse boxes, wrecks, river bank, border.
 export function resolveObstacles(pos, radius) {
-  for (const list of [obstacles, treeColliders, farmhouseColliders, objectColliders]) {
-    for (const o of list) {
-      const dx = pos.x - o.x, dz = pos.z - o.z;
+  const nearTrees = treesNear(pos.x, pos.z, radius);
+  for (const o of [obstacles, objectColliders, deadTankColliders]) {
+    for (const c of o) {
+      const dx = pos.x - c.x, dz = pos.z - c.z;
       const d = Math.hypot(dx, dz);
-      const min = o.r + radius;
-      if (d < min && d > 0.001) {
+      const min = c.r + radius;
+      if (d < min) {
         const push = min - d;
-        pos.x += (dx / d) * push;
-        pos.z += (dz / d) * push;
+        const nx = d > 0.001 ? dx / d : 1;
+        const nz = d > 0.001 ? dz / d : 0;
+        pos.x += nx * push;
+        pos.z += nz * push;
       }
     }
   }
+  for (const t of nearTrees) {
+    const dx = pos.x - t.x, dz = pos.z - t.z;
+    const d = Math.hypot(dx, dz);
+    const min = t.r + radius;
+    if (d < min) {
+      const push = min - d;
+      const nx = d > 0.001 ? dx / d : 1;
+      const nz = d > 0.001 ? dz / d : 0;
+      pos.x += nx * push;
+      pos.z += nz * push;
+    }
+  }
+  for (const b of farmhouseColliders) pushOutOfBox(pos, radius, b);
   // river bank: push out unless on bridge
   if (!inBridgeSpan(pos.x, pos.z)) {
     const rd = riverDist(pos.x, pos.z);
