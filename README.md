@@ -27,7 +27,7 @@ Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is f
 | --- | --- |
 | W / S | Drive forward / reverse |
 | A / D | Steer hull left / right (relative to the hull; works reversed) |
-| Mouse | Aim turret & camera (pointer lock) |
+| Mouse | Aim camera & white intent ring (pointer lock); turret/barrel converge toward it |
 | Left click | Fire |
 | R | Restart match |
 | Esc | Pause menu — master/effects/music volume sliders, resume, restart |
@@ -38,9 +38,9 @@ Start screen: click **START MISSION**. The start click captures the mouse and do
 
 `resetMatch()` (R key / restart button / end-of-match restart) is failure-tolerant: shell and tank cleanup, then player/enemy creation, each run in their own guarded block, and a reset that fails surfaces a 'RESTART FAILED' menu instead of a half-reset game. The render loop is also guarded — a throwing frame logs to the console and the loop continues, and a slow frame (>250 ms) logs a `Iron Valley slow frame` stack trace to the console for diagnosis.
 
-Spawn aim: the player's green indicator is placed at the terrain intersection ~100 m ahead of the spawn nose (pitch computed from the actual terrain, clamped to stats), and the barrel/turret are initialized to match — no above-horizon barrel at spawn. Enemies also initialize their barrel to a gravity-corrected aim at the player.
+Spawn aim: the camera/intent point is placed at the terrain intersection ~100 m ahead of the spawn nose (pitch computed from the actual terrain, clamped to stats), and the barrel/turret are initialized to match — no above-horizon barrel at spawn. Enemies also initialize their barrel to a gravity-corrected aim at the player.
 
-Aiming (War Thunder style): the mouse controls the **green ring** — the aiming indicator, placed where the mouse aim ray intersects the terrain (a fixed ~100 m point along the ray when the ray misses terrain, i.e. sky aim), which the camera follows. The turret and barrel converge toward the indicator at per-vehicle limited rates (M24 Chaffee: 24°/s traverse, 15°/s barrel; Panzer IV: 16°/s traverse, 15°/s barrel; hull steering: M24 24°/s, Panzer IV 20°/s), with pitch limits per tank (M24: -10° to +15°; Panzer IV: -10° to +20°). The **yellow dashed ring** is the predicted first-impact point from the *actual* barrel (recomputed every frame, real-world shell kinematics: 500 m/s, 9.81 m/s²). Enemy aim uses the same gravity-corrected elevation and the same limited-rate tracking. Stats live in `src/tank_stats.js` (keyed by modelKey); add a new vehicle there to get limited-rate aiming automatically.
+Aiming (War Thunder style): the mouse drives a damped **camera** that aims at a **white intent ring** — the aiming-intent indicator, placed where the camera ray first hits (terrain via marching, plus solid occluders: enemies and farmhouses; trees are passable). A fixed ~100 m point along the ray is used when the ray misses everything (sky aim). The turret and barrel converge toward that intent point at per-vehicle limited rates (M24 Chaffee: 24°/s traverse, 15°/s barrel; Panzer IV: 16°/s traverse, 15°/s barrel; hull steering: M24 24°/s, Panzer IV 20°/s), with pitch limits per tank (M24: -10° to +15°; Panzer IV: -10° to +20°). The **green ring** is downstream of the camera: where the *barrel* ray first hits (same occlude-aware raycast, origin = muzzle). The **yellow dashed ring** is the predicted first-impact point from the actual barrel (recomputed every frame, real-world shell kinematics: 500 m/s, 9.81 m/s²). Enemy aim uses the same gravity-corrected elevation and the same limited-rate tracking. Stats live in `src/tank_stats.js` (keyed by modelKey); add a new vehicle there to get limited-rate aiming automatically. Camera is damped (~10/s) toward the mouse-controlled aim direction and anchored behind the tank at fixed distance/height, so mouse motion does not jerk the camera. The camera pitch (white intent) is clamped to a wider range (−26°..+31°) than the turret pitch, so the mouse can point at sky/crest targets the barrel cannot yet reach — the green/yellow rings show the actual barrel.
 
 ## Module map
 

@@ -6,6 +6,8 @@ import { terrainHeight, treeColliders, farmhouseColliders, objectColliders, rebu
 import { loadTreeModel } from './tree.js';
 import { loadFarmhouseModel } from './farmhouse.js';
 
+export const occluderMeshes = []; // solid world occluders (farmhouses), for camera/barrel raycasts
+
 const loaders = {
   tree: loadTreeModel,
   farmhouse: loadFarmhouseModel,
@@ -51,6 +53,7 @@ export function placeObjects(scene, level, sources) {
     inst.position.set(o.x, base - (o.type === 'tree' ? 0.35 : 0.15), o.z);
     inst.traverse(n => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
     scene.add(inst);
+    if (o.type === 'farmhouse') occluderMeshes.push(inst);
     placed.push(o);
     if (editorMeta.collidable !== false) {
       if (o.type === 'tree') {
