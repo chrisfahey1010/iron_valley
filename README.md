@@ -29,10 +29,15 @@ Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is f
 | A / D | Steer hull left / right (relative to the hull; works reversed) |
 | Mouse | Aim camera & white intent ring (pointer lock); turret/barrel converge toward it |
 | Left click | Fire |
+| Right click / Shift | Toggle zoom (55° → 22° FOV, ~2.5x) |
 | R | Restart match |
 | Esc | Pause menu — master/effects/music volume sliders, resume, restart |
 
 Start screen: click **START MISSION**. The start click captures the mouse and does not fire.
+
+## Zoom mode
+
+Right-click or Shift toggles a zoom mode: camera FOV eases from 55° to 22° (~2.5x) over ~150 ms. Mouse sensitivity scales with the current FOV (`sens = base × camera.fov / 55`) so the world-space tracking rate stays consistent at any zoom level. The cue indicators (white/green/yellow rings) are fixed-size DOM elements, so they render at the same on-screen size in zoom. A `ZOOM 2.5x` badge shows state at top-left. Zoom resets to default on match restart (R / restart button / end-of-match restart).
 
 ## Restart resilience
 

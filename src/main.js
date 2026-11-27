@@ -108,7 +108,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87a7bd);
 scene.fog = new THREE.Fog(0x87a7bd, 180, 520);
 
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1200);
+const CAM_FOV_DEFAULT = 55;
+const CAM_FOV_ZOOM = 22;
+let zoomMode = false;
+const camera = new THREE.PerspectiveCamera(CAM_FOV_DEFAULT, 1, 0.1, 1200);
 
 const hemi = new THREE.HemisphereLight(0xbfd6e6, 0x3d4a30, 0.95);
 scene.add(hemi);
@@ -167,6 +170,8 @@ function makeEnemies() {
 }
 
 function resetMatch() {
+  zoomMode = false;
+  const zb0 = $('zoom-badge'); if (zb0) zb0.classList.add('hidden');
   window.__iv && (window.__iv.impacts = []);
   deadTankColliders.length = 0;
   // Clear shells and old tanks even if something below throws.
@@ -229,6 +234,7 @@ function resetMatch() {
     return;
   }
   state = 'playing';
+  const zb = $('zoom-badge'); if (zb) zb.classList.toggle('hidden', !zoomMode);
   closePause();
   endOverlay.classList.add('hidden');
   menuOverlay.classList.add('hidden');
@@ -245,11 +251,19 @@ function safeRequestPointerLock() {
   } catch { /* pointer lock unavailable */ }
 }
 
+function toggleZoom() {
+  if (state !== 'playing') return;
+  zoomMode = !zoomMode;
+  const badge = $('zoom-badge');
+  if (badge) badge.classList.toggle('hidden', !zoomMode);
+}
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
   keys.add(e.code);
   if (e.code === 'KeyR') { resetMatch(); safeRequestPointerLock(); }
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') toggleZoom();
 });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
@@ -260,11 +274,13 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
   if (e.button === 0) tryFire(player);
+  if (e.button === 2) toggleZoom();
 });
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas || state !== 'playing') return;
-  aimYaw -= e.movementX * 0.0022;
-  aimPitch = THREE.MathUtils.clamp(aimPitch + e.movementY * 0.0022 * -1, CAM_PITCH_MIN, CAM_PITCH_MAX);
+  const sens = 0.0022 * (camera.fov / CAM_FOV_DEFAULT);
+  aimYaw -= e.movementX * sens;
+  aimPitch = THREE.MathUtils.clamp(aimPitch + e.movementY * sens * -1, CAM_PITCH_MIN, CAM_PITCH_MAX);
 });
 
 $('start-btn').addEventListener('click', () => {
@@ -542,6 +558,16 @@ function update(dt) {
 }
 
 function updateCamera(dt) {
+  // zoom: ease FOV toward target (~150 ms)
+  const targetFov = zoomMode ? CAM_FOV_ZOOM : CAM_FOV_DEFAULT;
+  const kFov = 1 - Math.exp(-10 * (dt ?? 0.016));
+  if (Math.abs(camera.fov - targetFov) > 0.01) {
+    camera.fov += (targetFov - camera.fov) * kFov;
+    camera.updateProjectionMatrix();
+  } else if (camera.fov !== targetFov) {
+    camera.fov = targetFov;
+    camera.updateProjectionMatrix();
+  }
   // camera is damped toward the mouse-controlled aim direction (white ring).
   // Damping (not 1:1) is what keeps the white ring/camera from twitching.
   const k = 1 - Math.exp(-10 * (dt ?? 0.016));
