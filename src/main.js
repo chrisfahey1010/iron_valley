@@ -171,7 +171,6 @@ function makeEnemies() {
 
 function resetMatch() {
   zoomMode = false;
-  const zb0 = $('zoom-badge'); if (zb0) zb0.classList.add('hidden');
   window.__iv && (window.__iv.impacts = []);
   deadTankColliders.length = 0;
   // Clear shells and old tanks even if something below throws.
@@ -234,7 +233,6 @@ function resetMatch() {
     return;
   }
   state = 'playing';
-  const zb = $('zoom-badge'); if (zb) zb.classList.toggle('hidden', !zoomMode);
   closePause();
   endOverlay.classList.add('hidden');
   menuOverlay.classList.add('hidden');
@@ -254,8 +252,6 @@ function safeRequestPointerLock() {
 function toggleZoom() {
   if (state !== 'playing') return;
   zoomMode = !zoomMode;
-  const badge = $('zoom-badge');
-  if (badge) badge.classList.toggle('hidden', !zoomMode);
 }
 window.addEventListener('keydown', e => {
   if (e.repeat) return;

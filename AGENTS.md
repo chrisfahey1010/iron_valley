@@ -36,7 +36,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `A` increases hull yaw (nose left viewed from behind); `D` decreases it.
 - Barrel pitch stored in world space; turret's loaded rotation is relative to the hull, so aim stays fixed in world space while the hull turns.
 - Hull steering, turret and barrel all rate-limit per vehicle (tank_stats.js: hullTurnRateDeg): M24 Chaffee 24°/s, Panzer IV 20°/s. Aiming: the mouse drives a damped camera aimed at a world-space **white intent point** placed where the camera ray first hits (terrain march + enemy/farmhouse raycast; trees passable; fixed ~100 m point on sky aim), rendered as the white intent ring. The camera is damped toward that direction. Turret and barrel track the intent point at per-vehicle limited rates (src/tank_stats.js), with per-tank pitch limits. The **green ring** renders where the barrel ray first hits (same occlude-aware raycast, origin = muzzle). The **yellow dashed ring** is the predicted first-impact point from the actual barrel (recomputed per frame; 500 m/s, 9.81 m/s²). Enemy AI uses the same limited-rate tracking. Spawn: intent point at ground ~100 m ahead, barrel/turret initialized to match.
-- Zoom mode: right-click or Shift toggles FOV 55°→22° (state `zoomMode` in main.js); sensitivity scales with current FOV; cues are fixed-size DOM so they don't scale with FOV; badge in index.html. Resets on `resetMatch()`.
+- Zoom mode: right-click or Shift toggles FOV 55°→22° (state `zoomMode` in main.js); sensitivity scales with current FOV; cues are fixed-size DOM so they don't scale with FOV Resets on `resetMatch()`.
 - Fully self-contained: Three.js only, no external assets/network.
 
 ## Pitfalls
