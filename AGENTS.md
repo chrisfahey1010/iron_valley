@@ -25,11 +25,11 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
 - `barley.js` — instanced barley tufts in crops regions: deterministic rows (even X, 2 m spacing N/S, 1 m along Z, 0.7 m tall), wind sway + distance fade, no generation step; crops regions have no grass scatter and instead render barley.
 - `grass.js` — instanced tuft renderer (crossed quads, wind sway, distance fade, per-instance tint); built in `main.js` init after trees. Lighting: forces a world-up normal in the fragment shader so both crossed-quad sides light identically (hemisphere + sun); do not remove, or back-facing sides go dark again. Grass neither casts nor receives shadows
-- `mg_emplacement.js` — machinegun emplacement loading (static for now; `Mg_Turret` node is the future ±45° traverse pivot)
+- `mg_emplacement.js` — machinegun emplacement loading + `MgEmplacement` behavior (`MG_TUNING`: ±45° yaw arc, −10°/+20° pitch, 150 m range, 3 s × 30 bullet burst at 10 rps, 2 s cooldown); turret/gun rig driven by the `Mg_Turret`/`Mg_GunPivot` nodes; bullets spawn via `onMgFire` in main.js (no damage, shell-like collision)
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage
 - `docs/TANK_RIG_REFERENCE.md` — full rig/animation contract for future Blender-built tanks
-- `shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
+- `shells.js` — gravity projectiles (500 m/s, 9.81 m/s² default; `Shell` accepts `opts` for bullets: smaller radius, orange color, lower gravity, fewer trail points, longer life), segmented collision, trail, impact FX, trajectory prediction
 - `styles.css` — HUD, cues, overlays
 
 ## Conventions

@@ -75,23 +75,26 @@ export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
 }
 
 export class Shell {
-  constructor(scene, origin, vel, owner) {
+  constructor(scene, origin, vel, owner, opts = {}) {
     this.scene = scene;
     this.owner = owner;
+    this.bullet = opts.bullet ?? false;
+    this.gravity = opts.gravity ?? GRAVITY;
     this.pos = origin.clone();
     this.vel = vel.clone();
-    this.life = 5.0;
+    this.life = opts.life ?? 5.0;
     this.mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 6, 5),
-      new THREE.MeshBasicMaterial({ color: 0xffe27a })
+      new THREE.SphereGeometry(opts.radius ?? 0.22, 6, 5),
+      new THREE.MeshBasicMaterial({ color: opts.color ?? 0xffe27a })
     );
     scene.add(this.mesh);
     // trail
-    this.trailPositions = new Float32Array(24 * 3);
+    this.trailMax = opts.trailPoints ?? 24;
+    this.trailPositions = new Float32Array(this.trailMax * 3);
     this.trailCount = 0;
     const tg = new THREE.BufferGeometry();
     tg.setAttribute('position', new THREE.BufferAttribute(this.trailPositions, 3));
-    this.trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ color: 0xffc94d, transparent: true, opacity: 0.7 }));
+    this.trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ color: opts.trailColor ?? 0xffc94d, transparent: true, opacity: opts.trailOpacity ?? 0.7 }));
     this.trail.frustumCulled = false;
     scene.add(this.trail);
   }
@@ -100,7 +103,7 @@ export class Shell {
     this.life -= dt;
     if (this.life <= 0) { this.dispose(); return { consumed: true, reason: 'expired' }; }
     const next = this.pos.clone().addScaledVector(this.vel, dt);
-    this.vel.y -= GRAVITY * dt;
+    this.vel.y -= this.gravity * dt;
     const segLen = next.distanceTo(this.pos);
     const steps = Math.max(1, Math.ceil(segLen / 0.5));
     for (let i = 1; i <= steps; i++) {
@@ -154,20 +157,21 @@ export class Shell {
     this.pos.copy(next);
     this.mesh.position.copy(this.pos);
     // trail
-    if (this.trailCount < 24) {
+    if (this.trailCount < this.trailMax) {
       this.trailPositions[this.trailCount * 3] = this.pos.x;
       this.trailPositions[this.trailCount * 3 + 1] = this.pos.y;
       this.trailPositions[this.trailCount * 3 + 2] = this.pos.z;
       this.trailCount++;
     } else {
-      for (let i = 0; i < 23; i++) {
+      for (let i = 0; i < this.trailMax - 1; i++) {
         this.trailPositions[i * 3] = this.trailPositions[(i + 1) * 3];
         this.trailPositions[i * 3 + 1] = this.trailPositions[(i + 1) * 3 + 1];
         this.trailPositions[i * 3 + 2] = this.trailPositions[(i + 1) * 3 + 2];
       }
-      this.trailPositions[23 * 3] = this.pos.x;
-      this.trailPositions[23 * 3 + 1] = this.pos.y;
-      this.trailPositions[23 * 3 + 2] = this.pos.z;
+      const last = (this.trailMax - 1) * 3;
+      this.trailPositions[last] = this.pos.x;
+      this.trailPositions[last + 1] = this.pos.y;
+      this.trailPositions[last + 2] = this.pos.z;
     }
     this.trail.geometry.setDrawRange(0, this.trailCount);
     this.trail.geometry.attributes.position.needsUpdate = true;

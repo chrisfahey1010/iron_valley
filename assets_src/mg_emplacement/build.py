@@ -13,9 +13,11 @@ Authoring convention (Blender is Z-up, export_yup=True):
     pointing toward Blender -Y.
   - Origin at ground level (center of the turret pivot).
 
-Rig (for future animation): turret group named "Mg_Turret", pivot at the
-turret rotation axis (bottom center, z = pedestal top). The gun is parented
-under it. Sandbags stay static. All objects flat-shaded, low segment count.
+Rig (for future animation): turret group named "Mg_Turret" (pivot at the
+turret rotation axis, bottom center, z = pedestal top). The machinegun is
+parented under an "Mg_GunPivot" empty (pivot at the bore axis, near the
+stock hinge) so the gun can pitch -20..10 deg. Sandbags stay static.
+All objects flat-shaded, low segment count.
 
 Run:
   ~/.local/bin/blender --background --factory-startup --disable-autoexec \
@@ -156,21 +158,42 @@ box('MG_TurretRear', (0, 0.42, 0.26), (0.6, 0.42, 0.4), M_METAL, parent=turret)
 shield = box('MG_GunShield', (0, -0.50, 0.46), (0.95, 0.10, 0.52), M_SHIELD,
              rot=(math.radians(-8), 0, 0), parent=turret, bevel=0.04)
 
-# machinegun: receiver + barrel along forward (-Y)
+# gun pivot: empty at the bore axis, near the stock hinge (parent = turret)
+gunPivot = bpy.data.objects.new('Mg_GunPivot', None)
+bpy.context.collection.objects.link(gunPivot)
+gunPivot.location = (0, 0.12, GUN_HEIGHT - TURRET_Z)
+gunPivot.empty_display_type = 'PLAIN_AXES'
+gunPivot.empty_display_size = 0.2
+gunPivot.parent = turret
+
+# machinegun: receiver + barrel along forward (-Y). Positions below are
+# turret-local, matching the pre-pivot asset; re-attached to gunPivot so its
+# world transform stays exactly where it was.
+def attach_to_pivot(obj):
+    bpy.context.view_layer.update()
+    world = obj.matrix_world.copy()
+    local = obj.matrix_local.copy()
+    obj.parent = gunPivot
+    bpy.context.view_layer.update()
+    obj.matrix_parent_inverse = gunPivot.matrix_world.inverted() @ world @ local.inverted()
+    bpy.context.view_layer.update()
+    d = obj.matrix_world.to_translation() - world.to_translation()
+    assert d.length < 0.001, f're-parent moved {obj.name}: {d}'
+
 box('MG_Receiver', (0, -0.34, GUN_HEIGHT - TURRET_Z), (0.26, 0.72, 0.28), M_GUN, parent=turret, bevel=0.05)
 cyl('MG_Barrel', (0, -1.15, GUN_HEIGHT - TURRET_Z), 0.055, 1.5, M_GUN, 8,
     rot=(math.radians(90), 0, 0), parent=turret)
-# muzzle brake (small box)
 box('MG_MuzzleBrake', (0, -1.85, GUN_HEIGHT - TURRET_Z), (0.11, 0.22, 0.11), M_METAL, parent=turret)
-# carry handle / scope
 cyl('MG_Scope', (0, -0.30, GUN_HEIGHT - TURRET_Z + 0.24), 0.07, 0.30, M_METAL, 8,
     rot=(math.radians(90), 0, 0), parent=turret)
-# wooden stock partially visible at rear
 box('MG_Stock', (0, 0.34, GUN_HEIGHT - TURRET_Z - 0.02), (0.16, 0.42, 0.2), M_WOOD, parent=turret)
 
 # sandbag-softened cheek plates beside the gun
 box('MG_CheekL', (-0.33, -0.40, GUN_HEIGHT - TURRET_Z - 0.08), (0.07, 0.40, 0.18), M_SHIELD, parent=turret)
 box('MG_CheekR', (0.33, -0.40, GUN_HEIGHT - TURRET_Z - 0.08), (0.07, 0.40, 0.18), M_SHIELD, parent=turret)
+
+for name in ('MG_Receiver', 'MG_Barrel', 'MG_MuzzleBrake', 'MG_Scope', 'MG_Stock', 'MG_CheekL', 'MG_CheekR'):
+    attach_to_pivot(bpy.data.objects[name])
 
 # ---------- collect / export ----------
 for obj in list(bpy.data.objects):

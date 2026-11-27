@@ -4,6 +4,7 @@ import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING, dead
 import { loadLevel, validateLevel } from './level.js';
 import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects, occluderMeshes } from './objects.js';
+import { MgEmplacement, MG_TUNING } from './mg_emplacement.js';
 import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
 import { createBarley } from './barley.js';
@@ -133,7 +134,7 @@ let level = null;              // validated level.json (see src/level.js)
 let grass = null;              // instanced grass tufts (see grass.js)
 let barley = null;             // instanced barley in crops regions (see barley.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
-let player = null, enemies = [], shells = [], effects = [];
+let player = null, enemies = [], shells = [], effects = [], mgas = [];
 let aimYaw = SPAWN_HEADING, aimPitch = -0.03;
 const AIM_DIST = 100;        // max distance used when aim ray misses terrain (sky aim)
 const AIM_MAX = 1500;        // max march distance for terrain intersection
@@ -238,6 +239,8 @@ function resetMatch() {
   closePause();
   endOverlay.classList.add('hidden');
   menuOverlay.classList.add('hidden');
+  // reset MG turret/burst state (instances persist across matches)
+  for (const mg of mgas) mg.reset();
   startTime = performance.now();
   lastTime = 0;
   try { updateHUD(); } catch (err) { console.error('updateHUD failed', err); }
@@ -316,6 +319,22 @@ function tryFire(tank) {
   const shell = new Shell(scene, _muzzle, vel, tank);
   shells.push(shell);
   playShellFireAt(_muzzle.clone(), camera.position);
+}
+
+// MG emplacement bullet: no damage, collides like any other projectile.
+function onMgFire(mg, muzzle, dir) {
+  const vel = dir.clone().multiplyScalar(MG_TUNING.speed);
+  const bullet = new Shell(scene, muzzle.clone(), vel, mg, {
+    bullet: true,
+    radius: 0.07,
+    color: 0xffa63a,
+    gravity: MG_TUNING.gravity,
+    trailPoints: 12,
+    trailColor: 0xffb347,
+    trailOpacity: 0.8,
+    life: 4.0,
+  });
+  shells.push(bullet);
 }
 
 // Raycast first hit: terrain (2 m march) + solid occluders (alive/dead enemies,
@@ -541,18 +560,23 @@ function update(dt) {
   // enemies
   for (const e of enemies) { updateEnemy(e, dt); tickMuzzleFlash(e, dt); }
 
+  // MG emplacements (track player, fire bursts)
+  for (const mg of mgas) {
+    mg.update(dt, player, (targetPos) => hasClearShot(mg, targetPos));
+  }
+
   // shells
   for (let i = shells.length - 1; i >= 0; i--) {
     const r = shells[i].step(dt, [player, ...enemies]);
     if (r.consumed) {
-      if (r.reason === 'tank' && r.target) {
+      if (!shells[i].bullet && r.reason === 'tank' && r.target) {
         const dmg = shells[i].owner.isPlayer ? TUNING.shellPlayerDamage : TUNING.enemy.damage;
         r.target.damage(dmg);
       }
       const kind = r.reason === 'tank' || r.reason === 'wreck' ? 'tank'
         : r.reason === 'farmhouse' || r.reason === 'tree' ? 'rock'
         : 'terrain';
-      if (r.impactPoint) playImpactAt(kind, r.impactPoint, camera.position);
+      if (r.impactPoint && !shells[i].bullet) playImpactAt(kind, r.impactPoint, camera.position);
       shells[i].dispose();
       shells.splice(i, 1);
     }
@@ -687,7 +711,9 @@ async function init() {
     buildWorld(scene, level);
     buildRoads(scene, level);
     const objectSources = await loadObjectSources(level);
-    placeObjects(scene, level, objectSources);
+    const mgInstances = placeObjects(scene, level, objectSources).filter(i => i.def.type === 'mg_emplacement');
+    mgas = mgInstances.map(i => new MgEmplacement(scene, i.def, i.instance, onMgFire));
+    if (mgas.length) console.log(`placed ${mgas.length} MG emplacements`);
     grass = createGrass(scene, level);
     barley = createBarley(scene, level);
     resetMatch();
@@ -704,4 +730,4 @@ async function init() {
 }
 init();
 
-window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get mgas(){return mgas}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };

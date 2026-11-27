@@ -40,6 +40,7 @@ export function placeObjects(scene, level, sources) {
   farmhouseColliders.length = 0;
   objectColliders.length = 0;
   const placed = [];
+  const instances = [];
   for (const o of level.objects) {
     const source = sources[o.type];
     const meta = ASSETS[o.type];
@@ -57,6 +58,7 @@ export function placeObjects(scene, level, sources) {
     scene.add(inst);
     if (o.type === 'farmhouse') occluderMeshes.push(inst);
     placed.push(o);
+    instances.push({ def: o, instance: inst });
     if (editorMeta.collidable !== false) {
       if (o.type === 'tree') {
         // trunk-only circle; canopy is passable
@@ -71,5 +73,5 @@ export function placeObjects(scene, level, sources) {
   }
   rebuildTreeGrid();
   console.log(`placed ${placed.length} objects from level`);
-  return placed.length;
+  return instances;
 }

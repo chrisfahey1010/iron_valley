@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-27 — machinegun emplacement in-game turret behavior
+
+- **assets_src/mg_emplacement/build.py** — added an `Mg_GunPivot` empty at the bore axis (turret-local (0, 0.12, 0.63), parent `Mg_Turret`) and re-parented all gun parts (receiver, barrel, muzzle brake, scope, stock, cheek plates) to it via `attach_to_pivot()` (world-transform-preserving). Asset re-exported as `public/models/mg_emplacement.glb`.
+- **src/mg_emplacement.js** — extended loader with `MgEmplacement` controller + `MG_TUNING` (arc ±45°, pitch −10°/+20°, 150 m range, 3 s × 30 bullet burst at 10 rps, 2 s cooldown, 600 m/s with 30 m/s² drop, faint inaccuracy spread, exponential pan/pitch damping, static muzzle flash at the barrel tip). `update(dt, player, hasClearShot)` tracks the player, clamps yaw/pitch to the arc/pitch limits, fires when aimed within tolerance with LOS clear, and cycles through burst → cooldown.
+- **src/shells.js** — `Shell` constructor accepts `opts` (`bullet`, `radius`, `color`, `gravity`, `trailPoints`, `trailColor`, `trailOpacity`, `life`); trail buffer/loop size and gravity now use the per-shell value.
+- **src/objects.js** — `placeObjects()` now returns `[{ def, instance }]` instances (used by main.js to build the MG controllers).
+- **src/main.js** — `onMgFire()` pushes bullet shells onto the shared `shells` array (no damage, no impact SFX); `mgas` array built from placement instances, reset on match start, updated each frame (`mg.update(dt, player, (pos) => hasClearShot(mg, pos))`); bullets skip damage + impact SFX; `window.__iv.mgas` exposed for debugging.
+- **README.md / AGENTS.md** — module docs + behavior section updated.
+
 ## 2026-11-27 — machinegun emplacement asset + editor placement
 
 - **assets_src/mg_emplacement/** (new) — Blender build (`build.py` + editable `.blend` + preview scripts) producing `public/models/mg_emplacement.glb` (~4.6 m footprint, low-poly, 7 materials). Isometric 3-row sandbag arc (~180°) in front, pedestal, squat turret with gun shield, receiver, barrel and muzzle brake over the bag line. Turret is a `Mg_Turret` node (pivot at pedestal top) under which the gun assembly is parented — a static model for now, ready for a ±45° traverse rig; sandbags static. 7-material low-poly asset, 49 meshes.
