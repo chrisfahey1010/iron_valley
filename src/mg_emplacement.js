@@ -3,6 +3,11 @@
 // ±45° from the placement heading (a 90° firing arc), pitches −10°/+20°, and
 // fires 30-bullet 3 s bursts at the player (10 shots/s) when it has
 // line-of-sight and range, then sits in a 2 s cooldown before re-engaging.
+//
+// The emplacement also has a damage model (used by shells in shells.js):
+// a tank-fired shell hitting the sandbags removes them (terrain SFX); a shell
+// hitting the turret (or splash damage) destroys it — the turret husks over
+// and stops firing, mirroring how dead tanks stay as wrecks with collision.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ASSETS, measureRootBbox } from './scale.js';
@@ -21,6 +26,7 @@ export const MG_TUNING = {
   panRate: 6.0,          // exp damp rate (1/s) — turret pan
   pitchRate: 6.0,        // exp damp rate (1/s) — barrel pitch
   inaccuracy: 0.02,      // rad — small burst spread
+  splashRadius: 4.0,     // m — shells landing this close to the turret kill it
 };
 
 const loader = new GLTFLoader();
@@ -61,6 +67,26 @@ export class MgEmplacement {
     this.enabled = !!(this.turret && this.gun && this.muzzle);
     if (!this.enabled) console.warn('[mg] missing rig nodes — firing disabled');
 
+    // Per-instance material clones — the shared source model is reused across
+    // instances; tinting one instance must never leak into the others.
+    this._clonedMats = new Map(); // material -> original color
+    this.sandbags = [];
+    instance.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone();
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) if (m.color && !this._clonedMats.has(m)) this._clonedMats.set(m, m.color.clone());
+      if (o.name.startsWith('Sandbag_')) this.sandbags.push(o);
+    });
+
+    // world-space collision / scale helpers
+    this.worldScale = this.group.scale.x;
+    this.footprintR = 2.3 * (this.def.scale || 1);
+    this.armed = true;
+    this.destroyed = false;
+    this.sandbagsUp = true;
+    this._huskRegistered = false;
+
     this.localYaw = 0;
     this.pitch = 0;
     this.burstTimer = 0;
@@ -78,6 +104,12 @@ export class MgEmplacement {
     if (this.gun) this.gun.add(this.flash);
   }
 
+  turretCenterWorld(out) {
+    this.turret.getWorldPosition(out);
+    out.y += 0.35 * this.worldScale;
+    return out;
+  }
+
   reset() {
     this.localYaw = 0;
     this.pitch = 0;
@@ -85,9 +117,53 @@ export class MgEmplacement {
     this.cooldown = 0;
     this.bulletTimer = 0;
     this.flashTime = 0;
-    if (this.turret) this.turret.rotation.y = 0;
-    if (this.gun) this.gun.rotation.x = 0;
+    if (this.turret) this.turret.rotation.set(0, 0, 0);
+    if (this.gun) { this.gun.rotation.x = 0; this.gun.visible = true; }
     if (this.flash) this.flash.visible = false;
+    // restore sandbags
+    if (!this.sandbagsUp) {
+      this.sandbagsUp = true;
+      for (const s of this.sandbags) s.visible = true;
+    }
+    // restore the turret (darkened husk -> painted, sunk -> level)
+    if (this.destroyed) {
+      this.destroyed = false;
+      this.armed = true;
+      for (const [m, base] of this._clonedMats) if (base && m.color) m.color.copy(base);
+    }
+    if (this._huskRegistered) this._huskRegistered = false;
+  }
+
+  destroySandbags() {
+    if (!this.sandbagsUp) return false;
+    this.sandbagsUp = false;
+    for (const s of this.sandbags) s.visible = false;
+    return true;
+  }
+
+  destroyTurret() {
+    if (this.destroyed) return false;
+    this.destroyed = true;
+    this.armed = false;
+    this.burstTimer = 0;
+    this.cooldown = 0;
+    this.bulletTimer = 0;
+    if (this.flash) this.flash.visible = false;
+    this.flashTime = 0;
+    // darken turret + gun to a husk (mirrors dead tanks)
+    const dark = (node) => {
+      node.traverse(o => {
+        if (o.isMesh && o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) if (m.color) m.color.set(0x1c1c1c);
+        }
+      });
+    };
+    if (this.turret) dark(this.turret);
+    if (this.gun) dark(this.gun);
+    // slump the turret like a sinking tank
+    if (this.turret) this.turret.rotation.z = 0.22;
+    return true;
   }
 
   muzzleWorldPos(out) {
@@ -126,6 +202,7 @@ export class MgEmplacement {
       this.flashTime -= dt;
       if (this.flashTime <= 0) this.flash.visible = false;
     }
+    if (!this.armed) return;
     if (!player || !player.alive) return;
 
     const aim = this.aimAt(player);

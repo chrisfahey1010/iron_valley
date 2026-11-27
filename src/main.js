@@ -152,6 +152,12 @@ function playerSpawn() {
   return level?.spawns?.player ?? { x: SPAWN.x, z: SPAWN.z, heading: SPAWN_HEADING };
 }
 
+function registerMgHusk(mg) {
+  if (!mg || mg._huskRegistered) return;
+  mg._huskRegistered = true;
+  deadTankColliders.push({ x: mg.group.position.x, z: mg.group.position.z, r: 1.2 * mg.worldScale });
+}
+
 function makePlayer() {
   const sp = playerSpawn();
   return new Tank({ modelKey: 'tank_6', x: sp.x, z: sp.z, heading: sp.heading, isPlayer: true, scene, models });
@@ -567,16 +573,44 @@ function update(dt) {
 
   // shells
   for (let i = shells.length - 1; i >= 0; i--) {
-    const r = shells[i].step(dt, [player, ...enemies]);
+    const r = shells[i].step(dt, [player, ...enemies], mgas);
     if (r.consumed) {
       if (!shells[i].bullet && r.reason === 'tank' && r.target) {
         const dmg = shells[i].owner.isPlayer ? TUNING.shellPlayerDamage : TUNING.enemy.damage;
         r.target.damage(dmg);
       }
-      const kind = r.reason === 'tank' || r.reason === 'wreck' ? 'tank'
+      // MG emplacement interactions (tank-fired shells only)
+      let splashKill = false;
+      if (!shells[i].bullet) {
+        if (r.reason === 'turret' && r.target) {
+          // direct hit on the turret — kill it like a tank
+          r.target.destroyTurret();
+          registerMgHusk(r.target);
+        } else if (r.reason === 'sandbag' && r.target) {
+          // sandbags go away — turret is now more vulnerable
+          r.target.destroySandbags();
+        } else if ((r.reason === 'terrain' || r.reason === 'tree' || r.reason === 'farmhouse') && r.impactPoint) {
+          // splash damage: a shell landing next to a live turret kills it
+          for (const mg of mgas) {
+            if (!mg.armed) continue;
+            const dx = r.impactPoint.x - mg.group.position.x;
+            const dz = r.impactPoint.z - mg.group.position.z;
+            if (Math.hypot(dx, dz) < MG_TUNING.splashRadius) {
+              mg.destroyTurret();
+              registerMgHusk(mg);
+              splashKill = true;
+              playImpactAt('tank', r.impactPoint, camera.position);
+            }
+          }
+        }
+      }
+      const kind = r.reason === 'tank' || r.reason === 'wreck' || r.reason === 'turret' ? 'tank'
         : r.reason === 'farmhouse' || r.reason === 'tree' ? 'rock'
         : 'terrain';
-      if (r.impactPoint && !shells[i].bullet) playImpactAt(kind, r.impactPoint, camera.position);
+      // terrain SFX for the shell's own impact (skipped when splash just killed the turret)
+      if (r.impactPoint && !shells[i].bullet && !(r.reason === 'terrain' && splashKill)) {
+        playImpactAt(kind, r.impactPoint, camera.position);
+      }
       shells[i].dispose();
       shells.splice(i, 1);
     }

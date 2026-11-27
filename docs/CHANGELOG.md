@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-27 — machinegun emplacement shell-collision / damage mechanic
+
+- **src/mg_emplacement.js** — added damage model: per-instance material clones (shared source model is never mutated), `sandbags[]` tracking, `destroySandbags()` (hides sandbag meshes; sandbag footprint collider is bypassed), `destroyTurret()` (darkens turret + gun to 0x1c1c1c, slumps rotation.z = 0.22, disarms; leaves the husk mesh), `reset()` restores sandbags, materials and level rotation, `turretCenterWorld()`/`worldScale`/`footprintR` helpers, `splashRadius` (4 m) in `MG_TUNING`, `armed`/`destroyed`/`sandbagsUp`/`_huskRegistered` state.
+- **src/shells.js** — `step(dt, tanks, mgas)`: tank-fired shells (`!this.bullet`) now hit the turret sphere (0.8 × worldScale, owner excluded, even when sandbags are up) and the sandbag footprint band (`footprintR`, y below 0.85 × worldScale + 0.2); returns reason `turret`/`sandbag` with impact point.
+- **src/main.js** — shell consumption loop: `turret` hit → `destroyTurret()` + `registerMgHusk()` (permanent `deadTankColliders` entry, r = 1.2 × worldScale) + tank impact SFX; `sandbag` hit → `destroySandbags()` + terrain impact SFX; terrain/tree/farmhouse impact → splash damage: any live MG within `splashRadius` is destroyed + husk collider + tank SFX (terrain SFX suppressed for the killing shell). `registerMgHusk()` helper added. Bullets never trigger any of this.
+- **README.md / AGENTS.md** — damage-mechanic docs updated.
+
 ## 2026-11-27 — machinegun emplacement in-game turret behavior
 
 - **assets_src/mg_emplacement/build.py** — added an `Mg_GunPivot` empty at the bore axis (turret-local (0, 0.12, 0.63), parent `Mg_Turret`) and re-parented all gun parts (receiver, barrel, muzzle brake, scope, stock, cheek plates) to it via `attach_to_pivot()` (world-transform-preserving). Asset re-exported as `public/models/mg_emplacement.glb`.

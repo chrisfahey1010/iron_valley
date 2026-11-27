@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { terrainHeight, treeColliders, treesNear, farmhouseColliders, deadTankColliders, WORLD_SIZE } from './world.js';
 
+const _mgTmp = new THREE.Vector3();
+
 function logImpact(o){ if (typeof window!=='undefined' && window.__iv) { if (!Array.isArray(window.__iv.impacts)) window.__iv.impacts=[]; window.__iv.impacts.push(o); } }
 
 export const SHELL_SPEED = 500; // m/s — real-world shell speed
@@ -99,7 +101,7 @@ export class Shell {
     scene.add(this.trail);
   }
 
-  step(dt, tanks) {
+  step(dt, tanks, mgas) {
     this.life -= dt;
     if (this.life <= 0) { this.dispose(); return { consumed: true, reason: 'expired' }; }
     const next = this.pos.clone().addScaledVector(this.vel, dt);
@@ -146,6 +148,31 @@ export class Shell {
           this.impact(q);
           logImpact({reason:'tank',x:q.x,y:q.y,z:q.z});
           return { consumed: true, reason: 'tank', target: tank, impactPoint: q };
+        }
+      }
+      // MG emplacements: tank-fired shells only (bullets never trigger this)
+      if (mgas && !this.bullet) {
+        for (const mg of mgas) {
+          if (!mg || !mg.turret) continue;
+          // turret hit — even with sandbags up (barrel pokes above them)
+          if (mg.armed) {
+            const c = mg.turretCenterWorld(_mgTmp);
+            if (q.distanceTo(c) < 0.8 * mg.worldScale) {
+              this.impact(q);
+              logImpact({reason:'turret',x:q.x,y:q.y,z:q.z});
+              return { consumed: true, reason: 'turret', target: mg, impactPoint: q };
+            }
+          }
+          // sandbag hit — any shell within the footprint band
+          if (mg.sandbagsUp) {
+            const dx = q.x - mg.group.position.x, dz = q.z - mg.group.position.z;
+            if (Math.hypot(dx, dz) < mg.footprintR
+              && q.y < mg.group.position.y + 0.85 * mg.worldScale + 0.2) {
+              this.impact(q);
+              logImpact({reason:'sandbag',x:q.x,y:q.y,z:q.z});
+              return { consumed: true, reason: 'sandbag', target: mg, impactPoint: q };
+            }
+          }
         }
       }
       if (Math.abs(q.x) > WORLD_SIZE / 2 || Math.abs(q.z) > WORLD_SIZE / 2) {
