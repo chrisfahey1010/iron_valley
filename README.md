@@ -95,3 +95,7 @@ See `docs/TANK_RIG_REFERENCE.md` for the full rig/animation contract for future 
 - Turret carries only yaw (`turretLocalYaw`); it does NOT pitch.
 - Barrel pitch is applied on a dedicated `barrelPivot` group hinged at the gun node's pivot. The pivot axis is derived at load time from the actual muzzle direction (`cross(muzzleDir, up)`) because the GLB's long axis is not axis-aligned — never pitch the gun about the turret's local X. Positive `barrelPitch` raises the tip.
 - Aim/world-space direction stays fixed while the hull turns because turret yaw is stored relative to the hull.
+
+## Crops ground texture
+
+`crops` regions render as dark brown tilled soil (Qwen Image 2.1, 1024×1024, `public/textures/crops_ground.png`), not the grasslands grass texture. The overlay is built per `crops` region in `buildWorld()` (`src/world.js`): a grid of cells fully inside the region polygon (step = 4 m), displaced to `terrainHeight(x, z) + 0.09`, with UVs at 1 texture repeat per 7 m. It uses the shared Lambert + `map` material with no vertex-color multiply, so the texture's own brown reads through unchanged; the region's `REGION_COLORS.crops` base tint is still painted on the underlying terrain and remains visible at region edges. Grass scatter (`src/ground.js`) still skips pasture/crops/clearing regions.

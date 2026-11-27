@@ -6,7 +6,7 @@
 //  - terrainHeight() includes the bridge deck override, so tanks, shells and
 //    camera all ground correctly with zero extra call-site changes
 import * as THREE from 'three';
-import { regionAt, REGION_COLORS } from './level.js';
+import { regionAt, pointInPolygon, REGION_COLORS } from './level.js';
 
 export const WORLD_SIZE = 1000;           // terrain plane size (m)
 export const HALF = WORLD_SIZE / 2;
@@ -146,6 +146,79 @@ export function buildWorld(scene, level = null) {
   const terrain = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: groundTex }));
   terrain.receiveShadow = true;
   scene.add(terrain);
+
+  // Crops overlay: tilled-soil texture on each crops region, raised just above terrain.
+  if (level) {
+    const cropsRegions = (level.terrain?.regions || []).filter(r => r.type === 'crops');
+    if (cropsRegions.length) {
+      const cropsTex = new THREE.TextureLoader().load('/textures/crops_ground.png');
+      cropsTex.wrapS = cropsTex.wrapT = THREE.RepeatWrapping;
+      cropsTex.anisotropy = 4;
+      cropsTex.colorSpace = THREE.SRGBColorSpace;
+      const tileMeters = 7; // one soil-texture repeat per N meters
+      const cropsMat = new THREE.MeshLambertMaterial({
+        map: cropsTex,
+        flatShading: true,
+      });
+      for (const region of cropsRegions) {
+        // Grid-sampled overlay: keeps triangles fully inside the region so
+        // vertices follow the real terrain height instead of a flat shape.
+        const pts = region.points;
+        const xs = pts.map(p => p[0]), zs = pts.map(p => p[1]);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+        const step = 4;
+        const nx = Math.max(2, Math.round((maxX - minX) / step));
+        const nz = Math.max(2, Math.round((maxZ - minZ) / step));
+        const grid = [];
+        const idxArr = [];
+        for (let j = 0; j <= nz; j++) {
+          for (let i = 0; i <= nx; i++) {
+            const x = minX + (maxX - minX) * (i / nx);
+            const z = minZ + (maxZ - minZ) * (j / nz);
+            grid.push(pointInPolygon(x, z, pts));
+          }
+        }
+        const vidx = (i, j) => (j * (nx + 1) + i);
+        // Build index map only for inside vertices
+        const indexMap = new Map();
+        let w = 0;
+        for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+          if (grid[vidx(i, j)]) indexMap.set(vidx(i, j), w++);
+        }
+        const verts = [];
+        // rebuild verts only for inside vertices
+        for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+          if (!grid[vidx(i, j)]) continue;
+          const x = minX + (maxX - minX) * (i / nx);
+          const z = minZ + (maxZ - minZ) * (j / nz);
+          verts.push(x, terrainHeight(x, z) + 0.09, z);
+        }
+        for (let j = 0; j < nz; j++) {
+          for (let i = 0; i < nx; i++) {
+            const a = vidx(i, j), b = vidx(i + 1, j), c = vidx(i + 1, j + 1), d = vidx(i, j + 1);
+            if (grid[a] && grid[b] && grid[c] && grid[d]) {
+              const ia = indexMap.get(a), ib = indexMap.get(b), ic = indexMap.get(c), id = indexMap.get(d);
+              idxArr.push(ia, ic, ib, ia, id, ic);
+            }
+          }
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3));
+        g.setIndex(idxArr);
+        const uvs = new Float32Array((verts.length / 3) * 2);
+        for (let i = 0; i < verts.length / 3; i++) {
+          uvs[i * 2] = verts[i * 3] / tileMeters;
+          uvs[i * 2 + 1] = verts[i * 3 + 2] / tileMeters;
+        }
+        g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        g.computeVertexNormals();
+        const mesh = new THREE.Mesh(g, cropsMat);
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+      }
+    }
+  }
 
   // River water ribbon
   const waterPts = [];

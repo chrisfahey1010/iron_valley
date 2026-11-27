@@ -132,7 +132,7 @@ export async function loadLevel(url = '/level.json') {
   }
 }
 
-function pointInPolygon(x, z, pts) {
+export function pointInPolygon(x, z, pts) {
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
     const xi = pts[i][0], zi = pts[i][1];
