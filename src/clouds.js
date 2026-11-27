@@ -39,10 +39,10 @@ float noise(vec3 x) {
 }
 float fbm(vec3 p) {
   float v = 0.0;
-  float a = 0.55;
-  for (int i = 0; i < 3; i++) {
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
     v += a * noise(p);
-    p = p * 2.13 + vec3(11.3, 7.1, 5.7);
+    p = p * 2.08 + vec3(11.3, 7.1, 5.7);
     a *= 0.5;
   }
   return v;
@@ -52,21 +52,21 @@ void main() {
   vec3 dir = normalize(vWorldPos - uCamPos);
   float y = clamp(dir.y, -1.0, 1.0);
   // Gradient sky (horizon -> zenith)
-  vec3 sky = mix(uHorizon, uZenith, pow(clamp(y, 0.0, 1.0), 0.55));
+  vec3 sky = mix(uHorizon, uZenith, pow(clamp(y, 0.0, 1.0), 0.5));
   // Sun glow
   float sunDot = clamp(dot(dir, uSunDir), 0.0, 1.0);
   sky += vec3(1.0, 0.9, 0.7) * pow(sunDot, 350.0) * 1.4;  // disc halo
-  sky += vec3(1.0, 0.85, 0.6) * pow(sunDot, 8.0) * 0.18;  // broad haze
+  sky += vec3(1.0, 0.85, 0.6) * pow(sunDot, 6.0) * 0.22;  // broad haze
 
   // Volumetric clouds along the ray
   if (dir.y > 0.015) {
-    float base = 130.0;
-    float top = 260.0;
+    float base = 120.0;
+    float top = 300.0;
     float t0 = (base - uCamPos.y) / dir.y;
     float t1 = (top - uCamPos.y) / dir.y;
     if (t1 > t0 && t1 > 0.0) {
       t0 = max(t0, 0.0);
-      const int STEPS = 36;
+      const int STEPS = 48;
       float d = (t1 - t0) / float(STEPS);
       vec3 accum = vec3(0.0);
       float alpha = 0.0;
@@ -74,19 +74,35 @@ void main() {
       for (int i = 1; i <= STEPS; i++) {
         float t = t0 + d * float(i);
         p = uCamPos + dir * t;
-        vec3 q = p * 0.006;
-        q.x += uTime * 0.008;
-        q.z += uTime * 0.0035;
+        // World-space cloud field, slow drift, anisotropic-ish (flattened vertically)
+        vec3 q = vec3(p.x * 0.0062, p.y * 0.011, p.z * 0.0062);
+        q.x += uTime * 0.006;
+        q.z += uTime * 0.0026;
+        // Domain warp for wispy edges
+        vec2 warp = vec2(
+          fbm(q * 1.35 + vec3(0.0, uTime * 0.008, 2.1)),
+          fbm(q * 1.35 + vec3(7.3, 5.1, 0.7))
+        ) - 0.5;
+        q += vec3(warp.x, 0.0, warp.y) * 0.9;
         float n = fbm(q);
+
+        // Density: fade near slab edges, threshold below full coverage
         float h = (p.y - base) / (top - base);
-        float profile = smoothstep(0.0, 0.25, h) * smoothstep(1.0, 0.65, h);
-        float density = smoothstep(0.62, 0.85, n) * profile;
-        float stepAlpha = density * 0.38;
-        float sunFacing = clamp(dot(normalize(vec3(0.3, 1.0, 0.2)), uSunDir), 0.0, 1.0);
-        vec3 cCol = mix(vec3(0.62, 0.66, 0.74), vec3(1.03, 1.0, 0.96), sunFacing);
+        float profile = smoothstep(0.0, 0.22, h) * smoothstep(1.0, 0.55, h);
+        // Pocket-shaped: sharper edges on the high side
+        float density = smoothstep(0.54, 0.82, n) * profile;
+        float stepAlpha = density * 0.42;
+
+        // Lighting: bright on tops, darker belly, warmed toward the sun side
+        float sunFace = 0.5 + 0.5 * dot(normalize(vec3(dir.xz, 0.0)), normalize(vec3(uSunDir.x, 0.0, uSunDir.z)));
+        float topLit = smoothstep(0.15, 0.85, h);
+        float lit = mix(0.18, 1.0, topLit * (0.55 + 0.45 * sunFace));
+        vec3 cCol = mix(vec3(0.52, 0.56, 0.66), vec3(1.05, 1.02, 0.97), lit);
+        // Sun-facing edge glow
+        cCol += vec3(1.0, 0.9, 0.65) * pow(sunDot, 3.0) * 0.18 * lit;
         accum += cCol * stepAlpha * (1.0 - alpha);
         alpha += stepAlpha * (1.0 - alpha);
-        if (alpha > 0.92) break;
+        if (alpha > 0.94) break;
       }
       vec3 cloudCol = accum / max(alpha, 1e-3);
       sky = mix(sky, cloudCol, alpha);
@@ -103,8 +119,8 @@ export function createSky(scene) {
     uCamPos: { value: new THREE.Vector3() },
     uSunDir: { value: new THREE.Vector3(0.45, 0.68, 0.28).normalize() },
     uTime: { value: 0 },
-    uHorizon: { value: new THREE.Color(0xbcd2e2) },
-    uZenith: { value: new THREE.Color(0x3f6f9e) },
+    uHorizon: { value: new THREE.Color(0xc4d6e6) },
+    uZenith: { value: new THREE.Color(0x3a6e9e) },
     uFogColor: { value: new THREE.Color(0x87a7bd) },
   };
   const geo = new THREE.SphereGeometry(900, 64, 32);
