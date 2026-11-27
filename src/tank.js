@@ -285,6 +285,17 @@ export class Tank {
 
   worldForward() { return new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading)); }
 
+  // Barrel direction with a per-shell random offset (uniform, ±inaccuracy)
+  // applied to both yaw and pitch axes — this is the real fire direction.
+  sampleFireDir() {
+    const inacc = this.stats.inaccuracy || 0;
+    const yaw = this.heading + this.turretLocalYaw + (Math.random() * 2 - 1) * inacc;
+    const pitch = this.barrelPitch + (Math.random() * 2 - 1) * inacc;
+    return new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch),
+                             Math.sin(pitch),
+                             Math.cos(yaw) * Math.cos(pitch)).normalize();
+  }
+
   barrelWorldDir() {
     const v = new THREE.Vector3(Math.sin(this.heading + this.turretLocalYaw) * Math.cos(this.barrelPitch),
                                Math.sin(this.barrelPitch),

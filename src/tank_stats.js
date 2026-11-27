@@ -13,6 +13,7 @@ export const TANK_STATS = {
     hullTurnRateDeg: 24,    // max hull yaw rate while steering (deg/s)
     pitchMinDeg: -10,       // lowest barrel elevation (deg)
     pitchMaxDeg: 15,        // highest barrel elevation (deg)
+    inaccuracyDeg: 0.3,     // max per-axis yaw/pitch offset per shell (deg)
   },
   tank_5: {
     name: 'Panzer IV',
@@ -21,6 +22,7 @@ export const TANK_STATS = {
     hullTurnRateDeg: 20,
     pitchMinDeg: -10,
     pitchMaxDeg: 20,
+    inaccuracyDeg: 2.0,     // literal value, not derived from player
   },
 };
 
@@ -35,6 +37,7 @@ export const TANK_STATS_R = Object.fromEntries(
     hullTurnRate: toRad(s.hullTurnRateDeg),
     pitchMin: toRad(s.pitchMinDeg),
     pitchMax: toRad(s.pitchMaxDeg),
+    inaccuracy: toRad(s.inaccuracyDeg ?? 0),
   })])
 );
 
