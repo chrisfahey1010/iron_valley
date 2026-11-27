@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-26 — enemy engagement: 150 m clear-shot range
+
+- **src/main.js** — `TUNING.enemy.fireRange` raised 34 → 150 m. New `hasClearShot()` LOS check: ray from enemy muzzle toward a point ~1.4 m above the player, marching terrain and raycasting solid farmhouse occluders (trees passable). Enemies now fire when within 150 m, roughly aimed, and the shot is clear; they keep approaching otherwise.
+
 ## 2026-11-26 — placeholder boulders/ruins removed
 
 - **src/world.js** — deleted the seeded obstacle scatter (`placeObstacles`, `mulberry32`/`rng`), the boulder/ruin mesh render loop in `buildWorld`, and obstacle entries from `resolveObstacles`. Collision now covers level objects, tree trunks, farmhouse boxes, wrecks, river and border. `resolveObstacles` keeps its (broader) name.

@@ -12,7 +12,7 @@ import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterV
 // ---------- tunables ----------
 const TUNING = {
   player: { accel: 14, maxSpeed: 5.5, reverseSpeed: 3, brake: 22 },
-  enemy:  { speed: 2.75, fireRange: 34, fireTimerMin: 1.6, fireTimerMax: 3.0, damage: 12 },
+  enemy:  { speed: 2.75, fireRange: 150, fireTimerMin: 1.6, fireTimerMax: 3.0, damage: 12 },
   enemyCount: 4,
   shellPlayerDamage: 26,
   playerReload: 0.9,
@@ -404,6 +404,36 @@ function updateCues() {
   }
 }
 
+
+// Line-of-sight check: muzzle -> player position. Trees are passable; terrain
+// and farmhouses (solid occluders) block. Returns true if the shot is clear.
+const _losDir = new THREE.Vector3();
+const _losTarget = new THREE.Vector3();
+function hasClearShot(e, targetPos) {
+  const from = new THREE.Vector3();
+  e.muzzleWorldPos(from);
+  _losTarget.copy(targetPos); _losTarget.y += 1.4;
+  _losDir.copy(_losTarget).sub(from);
+  const dist = _losDir.length();
+  if (dist < 0.001) return true;
+  _losDir.divideScalar(dist);
+  // terrain march (same granularity as aim predictor)
+  for (let d = 2; d < dist; d += 3) {
+    const x = from.x + _losDir.x * d;
+    const y = from.y + _losDir.y * d;
+    const z = from.z + _losDir.z * d;
+    if (y <= terrainHeight(x, z)) return false;
+  }
+  // farmhouse occluders
+  if (occluderMeshes.length) {
+    _raycaster.set(from, _losDir);
+    _raycaster.far = dist - 1;
+    const hits = _raycaster.intersectObjects(occluderMeshes, true);
+    if (hits.length) return false;
+  }
+  return true;
+}
+
 // ---------- enemy AI ----------
 function updateEnemy(e, dt) {
   if (!e.alive) return;
@@ -446,7 +476,7 @@ function updateEnemy(e, dt) {
 
   // fire when roughly aimed and in range
   e.reload = Math.max(0, e.reload - dt);
-  if (e.reload <= 0 && dist < TUNING.enemy.fireRange && Math.abs(tDiff) < 0.25) {
+  if (e.reload <= 0 && dist < TUNING.enemy.fireRange && Math.abs(tDiff) < 0.25 && hasClearShot(e, player.pos)) {
     tryFire(e);
   }
 }
