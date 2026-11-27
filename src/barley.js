@@ -156,7 +156,7 @@ diffuseColor.rgb *= vTint;`
   mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   mesh.frustumCulled = false;
   mesh.castShadow = false;
-  mesh.receiveShadow = false;
+  mesh.receiveShadow = true;
 
   const dummy = new THREE.Object3D();
   const phase = new Float32Array(count);

@@ -34,3 +34,5 @@ button:hover { filter:brightness(1.1); }
 .volume-row { display:flex; align-items:center; gap:10px; justify-content:center; margin:14px 0 18px; font-size:11px; letter-spacing:.12em; color:#b9b2a4; pointer-events:auto; }
 .volume-row input[type=range] { pointer-events:auto; flex:1; min-width:160px; accent-color:#e0a13c; }
 #volume-value { min-width:42px; text-align:right; color:#e8e4da; }
+select { pointer-events:auto; flex:1; min-width:160px; background:#222; color:#e8e4da; border:1px solid rgba(255,255,255,.14); border-radius:6px; padding:5px 8px; font-size:12px; letter-spacing:.06em; }
+select:disabled { opacity:.4; cursor:not-allowed; }

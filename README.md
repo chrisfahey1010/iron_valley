@@ -31,7 +31,7 @@ Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is f
 | Left click | Fire |
 | Right click / Shift | Toggle zoom (55° → 22° FOV, ~2.5x) |
 | R | Restart match |
-| Esc | Pause menu — master/effects/music volume sliders, resume, restart |
+| Esc | Pause menu — master/effects/music volume sliders, shadow quality/draw-distance settings, resume, restart |
 
 Start screen: click **START MISSION**. The start click captures the mouse and does not fire.
 
@@ -66,7 +66,7 @@ Enemies engage at up to 150 m: they fire only when within range, roughly aimed, 
 - `src/ground.js` — ground-zone classifier (`groundZone`): water / riverbank / spawn / rim / clearing / grass; used by grass scatter
 - `src/forest.js` — seeded forest-tree scatter: `generateForestTrees(level, region)` for `forest` regions (deterministic, min 3 m trunk spacing, avoids roads/river/spawns/objects)
 - `src/grass.js` — instanced crossed-quad grass tufts with wind sway + distance fade; seeded deterministic scatter over the playable bounds.
-- `src/barley.js` — instanced crossed-quad barley in `crops` regions, placed in North/South rows (rows at even X, 2 m spacing, plants 1 m apart along Z, 0.7 m tall uniform scale, `public/textures/barley_tuft.png`); deterministic grid anchored to world origin; wind sway + distance fade + per-instance tint like grass. No editor/generation step — barley always renders from the level data. Skips roads, obstacle circles, bridge span and rim. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. No shadows from/onto grass
+- `src/barley.js` — instanced crossed-quad barley in `crops` regions, placed in North/South rows (rows at even X, 2 m spacing, plants 1 m apart along Z, 0.7 m tall uniform scale, `public/textures/barley_tuft.png`); deterministic grid anchored to world origin; wind sway + distance fade + per-instance tint like grass. No editor/generation step — barley always renders from the level data. Skips roads, obstacle circles, bridge span and rim. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. Receives sun shadows (receiveShadow) so tufts darken inside building shadows; no self-cast shadows
 - `src/audio.js` — positional shell-fire and impact SFX (speed-of-sound delay + distance attenuation); impact kind derived from shell-impact reason (tank / rock / terrain), variant picked randomly per impact
 - `src/styles.css` — HUD, cues, overlays
 
@@ -112,3 +112,7 @@ See `docs/TANK_RIG_REFERENCE.md` for the full rig/animation contract for future 
 ## Crops ground texture
 
 `crops` regions render as dark brown tilled soil (Qwen Image 2.1, 1024×1024, `public/textures/crops_ground.png`), not the grasslands grass texture. The overlay is built per `crops` region in `buildWorld()` (`src/world.js`): a grid of cells fully inside the region polygon (step = 4 m), displaced to `terrainHeight(x, z) + 0.09`, with UVs at 1 texture repeat per 7 m. It uses the shared Lambert + `map` material with no vertex-color multiply, so the texture's own brown reads through unchanged; the region's `REGION_COLORS.crops` base tint is still painted on the underlying terrain and remains visible at region edges. Grass scatter (`src/ground.js`) still skips pasture/crops/clearing regions. Barley (`src/barley.js`) renders in crops regions instead: crossed-quad instanced tufts in North/South rows (2 m row spacing in X, 1 m plant spacing along Z, 0.7 m tall, uniform texture scale), deterministic grid anchored to world origin, same wind/fade/tint shader as grass. Rows skip roads, obstacle circles (trees/farmhouse/object colliders), the bridge span and rim heights.
+
+## Shadow settings
+
+Pause menu (Esc): **Shadow Quality** — Off / Low / High (Low = 2048 shadow map, High = 4096 (tighter bias/normalBias for crisp edges), off disables shadow rendering). **Shadow Draw Distance** — 100 m / 300 m / 500 m, the radius around the player within which the sun's shadow camera covers the scene; disabled when quality is Off. Both persist in localStorage (`iv-shadow-quality`, `iv-shadow-distance`). The sun and shadow camera follow the player (or the menu camera in the menu), so shadows render near the player regardless of world position. Shadow rendering covers terrain, trees, farmhouses, MG emplacements, and tanks (including dead/wrecked tanks).

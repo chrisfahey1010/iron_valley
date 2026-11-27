@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-27 — shadow quality + draw-distance settings, shadows for all objects
+
+- **src/main.js** — shadow setup rewritten: sun + target exposed as reusable objects, follow-mounted to the player (or menu camera in menu state) every frame via `updateShadowFocus()`; `applyShadowSettings()` drives quality (Off / Low / High) and draw distance (100/300/500 m). Low = 2048 shadow map; High = 4096 map with tighter bias (-0.0002) and normalBias (0.015×scale) for crisp edges; Off disables `sun.castShadow` entirely. Shadow camera box half-extent = draw distance, far = 600 m, PCFSoftShadowMap retained. Both settings persist in localStorage (`iv-shadow-quality`, `iv-shadow-distance`).
+- **src/objects.js** — objects (trees, farmhouses, MG emplacements) already set `castShadow`; now actually visible because the shadow box follows the player instead of staying pinned at the world origin.
+- **src/grass.js / src/barley.js** — instanced tufts now `receiveShadow = true` (previously explicitly disabled) so grass/barley darken inside building/tank shadows.
+- **src/tank.js** — confirmed tanks (player + enemies) set castShadow/receiveShadow on all meshes at clone time and never disable them on death — dead/wrecked tanks keep casting.
+- **index.html / src/styles.css** — pause menu rows for Shadow Quality (Off/Low/High) and Shadow Draw Distance (100/300/500 m); the distance select disables when Quality = Off.
+- **README.md / AGENTS.md / docs/CHANGELOG.md** — docs updated.
+
 ## 2026-11-27 — machinegun emplacement shell-collision / damage mechanic
 
 - **src/mg_emplacement.js** — added damage model: per-instance material clones (shared source model is never mutated), `sandbags[]` tracking, `destroySandbags()` (hides sandbag meshes; sandbag footprint collider is bypassed), `destroyTurret()` (darkens turret + gun to 0x1c1c1c, slumps rotation.z = 0.22, disarms; leaves the husk mesh), `reset()` restores sandbags, materials and level rotation, `turretCenterWorld()`/`worldScale`/`footprintR` helpers, `splashRadius` (4 m) in `MG_TUNING`, `armed`/`destroyed`/`sandbagsUp`/`_huskRegistered` state.

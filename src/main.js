@@ -87,6 +87,26 @@ $('effects-slider').addEventListener('input', e => setEffects(e.target.value / 1
 setMaster(getMasterVolume());
 setEffects(getEffectsVolume());
 setVolume(musicBase);
+
+// ---------- shadow settings (pause menu) ----------
+const shadowQualitySel = $('shadow-quality-select');
+const shadowDistanceSel = $('shadow-distance-select');
+function syncShadowUI() {
+  if (!shadowQualitySel) return;
+  shadowQualitySel.value = shadowQuality;
+  shadowDistanceSel.value = String(shadowDistance);
+  shadowDistanceSel.disabled = shadowQuality === SHADOW_OFF;
+}
+shadowQualitySel.addEventListener('change', e => {
+  shadowQuality = e.target.value;
+  localStorage.setItem('iv-shadow-quality', shadowQuality);
+  applyShadowSettings();
+});
+shadowDistanceSel.addEventListener('change', e => {
+  shadowDistance = parseInt(e.target.value, 10) || 300;
+  localStorage.setItem('iv-shadow-distance', String(shadowDistance));
+  applyShadowSettings();
+});
 $('resume-btn').addEventListener('click', () => {
   closePause();
   safeRequestPointerLock();
@@ -118,15 +138,57 @@ const camera = new THREE.PerspectiveCamera(CAM_FOV_DEFAULT, 1, 0.1, 1200);
 const hemi = new THREE.HemisphereLight(0xbfd6e6, 0x3d4a30, 0.95);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2d8, 1.6);
-sun.position.set(35, 60, 20);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
-sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
-sun.shadow.camera.far = 400;
 scene.add(sun);
+scene.add(sun.target);
+
+// Shadows — quality + draw distance are user settings (pause menu).
+// Off disables shadow rendering entirely; otherwise the shadow camera is
+// follow-mounted on the player (or menu camera) and its box half-extent equals
+// the chosen draw distance. Low = 1024 map, High = 2048 map.
+const SHADOW_OFF = 'off', SHADOW_LOW = 'low', SHADOW_HIGH = 'high';
+const SHADOW_DIST_OPTIONS = [100, 300, 500];
+let shadowQuality = localStorage.getItem('iv-shadow-quality') || SHADOW_HIGH;
+if (![SHADOW_OFF, SHADOW_LOW, SHADOW_HIGH].includes(shadowQuality)) shadowQuality = SHADOW_HIGH;
+let shadowDistance = parseInt(localStorage.getItem('iv-shadow-distance') ?? '300', 10);
+if (!SHADOW_DIST_OPTIONS.includes(shadowDistance)) shadowDistance = 300;
+
+function applyShadowSettings() {
+  const on = shadowQuality !== SHADOW_OFF;
+  sun.castShadow = on;
+  // Low = what High used to be (2048); High = 4096 for crisp edges.
+  const size = shadowQuality === SHADOW_HIGH ? 4096 : 2048;
+  if (sun.shadow.mapSize.x !== size) {
+    sun.shadow.mapSize.set(size, size);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  const ext = shadowDistance;
+  sun.shadow.camera.left = -ext; sun.shadow.camera.right = ext;
+  sun.shadow.camera.top = ext; sun.shadow.camera.bottom = -ext;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 600;
+  sun.shadow.camera.updateProjectionMatrix();
+  // High: tight bias for crisp cast edges; Low: looser to avoid acne.
+  if (shadowQuality === SHADOW_HIGH) {
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.015 * Math.max(1, ext / 200);
+  } else {
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.03 * Math.max(1, ext / 200);
+  }
+  if (typeof syncShadowUI === 'function') syncShadowUI();
+}
+
+// Keep the sun + shadow camera parked on the current focus point.
+const _shadowOffset = new THREE.Vector3(35, 60, 20);
+function updateShadowFocus(fx, fz) {
+  sun.position.set(fx + _shadowOffset.x, _shadowOffset.y, fz + _shadowOffset.z);
+  sun.target.position.set(fx, 0, fz);
+  sun.target.updateMatrixWorld();
+}
 
 // NOTE: buildWorld/grass/objects are built inside init() after level load.
+
+applyShadowSettings();
 
 // ---------- state ----------
 let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before match start
@@ -709,6 +771,8 @@ function loop(t) {
     } else if (state === 'menu') {
       updateMenuCamera();
     }
+    if (state === 'playing' && player) updateShadowFocus(player.pos.x, player.pos.z);
+    else if (state === 'menu') updateShadowFocus(camera.position.x, camera.position.z);
     if (grass) grass.update(t / 1000);
     if (barley) barley.update(t / 1000);
     renderer.render(scene, camera);

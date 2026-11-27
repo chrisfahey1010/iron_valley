@@ -128,7 +128,7 @@ diffuseColor.rgb *= vTint;`
   mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   mesh.frustumCulled = false;
   mesh.castShadow = false;
-  mesh.receiveShadow = false;
+  mesh.receiveShadow = true;
 
   // Scatter
   const rng = mulberry32(SEED);

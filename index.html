@@ -58,6 +58,22 @@
           <input id="volume-slider" type="range" min="0" max="100" value="70" />
           <span id="volume-value">70%</span>
         </div>
+        <div class="volume-row">
+          <label for="shadow-quality-select">SHADOW QUALITY</label>
+          <select id="shadow-quality-select">
+            <option value="off">Off</option>
+            <option value="low">Low</option>
+            <option value="high" selected>High</option>
+          </select>
+        </div>
+        <div class="volume-row">
+          <label for="shadow-distance-select">SHADOW DRAW DISTANCE</label>
+          <select id="shadow-distance-select">
+            <option value="100">100 m</option>
+            <option value="300" selected>300 m</option>
+            <option value="500">500 m</option>
+          </select>
+        </div>
         <button id="resume-btn">RESUME</button>
         <p class="small">Esc — resume &nbsp; R — restart</p>
       </div>
