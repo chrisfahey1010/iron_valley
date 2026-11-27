@@ -55,6 +55,7 @@ Enemies engage at up to 150 m: they fire only when within range, roughly aimed, 
 
 ## Module map
 
+- `src/clouds.js` — gradient sky dome with raymarched volumetric clouds: inward-facing sphere (radius 900) centered on the camera each frame; vertex pass carries the world position; fragment shader does a horizon→zenith gradient, sun disc/glow, then a 36-step raymarch through a noise slab (y 130–260 m, 3-octave fBm, time drift ~0.008 m/s in X, 0.0035 m/s in Z) accumulating sun-lit cloud color with slab-edge fade; fog blend below 0.12 elevation. `iv-no-sky=1` localStorage disables the dome entirely for debugging. Coverage is tuned so ~25% of the sky is covered; tweak the smoothstep thresholds in `src/clouds.js`.
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
 - `src/roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM)
 - `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, scenery, object/river/border collision

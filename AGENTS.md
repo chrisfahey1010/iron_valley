@@ -17,6 +17,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 
 ## Module map (`src/`)
 
+- `clouds.js` — sky dome: gradient + raymarched volumetric clouds (3D noise slab, time drift). Dome follows the camera position each frame; world-anchored noise so clouds don't move with the camera. `iv-no-sky=1` localStorage disables the dome. Keep coverage roughly ~25% (density smoothstep thresholds) — don't crank up density without re-checking ~25% coverage.
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch min/max, inaccuracyDeg), keyed by modelKey; consumed by tank.js `trackAim`, `sampleFireDir`, and the player/AI aim code in main.js. Add new vehicles here.
 - `world.js` — 1 km terrain height fn, river centerline + bridge, scenery, object/river/border collision

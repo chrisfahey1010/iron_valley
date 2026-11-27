@@ -1,5 +1,6 @@
 // Iron Valley — startup, match state, input, camera, AI, HUD, game loop.
 import * as THREE from 'three';
+import { createSky } from './clouds.js';
 import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING, deadTankColliders } from './world.js';
 import { loadLevel, validateLevel } from './level.js';
 import { buildRoads } from './roads.js';
@@ -127,7 +128,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87a7bd);
+scene.background = null;
 scene.fog = new THREE.Fog(0x87a7bd, 180, 520);
 
 const CAM_FOV_DEFAULT = 55;
@@ -189,6 +190,11 @@ function updateShadowFocus(fx, fz) {
 // NOTE: buildWorld/grass/objects are built inside init() after level load.
 
 applyShadowSettings();
+
+const sky = createSky(scene);
+if (localStorage.getItem('iv-no-sky') === '1') sky.mesh.visible = false;
+sky.uniforms.uSunDir.value.set(35, 60, 20).normalize();
+sky.uniforms.uFogColor.value.set(0x87a7bd);
 
 // ---------- state ----------
 let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before match start
@@ -773,6 +779,7 @@ function loop(t) {
     }
     if (state === 'playing' && player) updateShadowFocus(player.pos.x, player.pos.z);
     else if (state === 'menu') updateShadowFocus(camera.position.x, camera.position.z);
+    if (sky) sky.update(t / 1000, camera);
     if (grass) grass.update(t / 1000);
     if (barley) barley.update(t / 1000);
     renderer.render(scene, camera);
