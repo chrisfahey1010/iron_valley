@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-27 — textured dirt/gravel road ribbons + intersection z-fighting fix
+
+- **public/textures/dirt-road.png / gravel-road.png** (new) — Qwen Image 2.1, 512×512, full road width across-U (tire/wheel tracks + shoulders), seamless-edge crossfade on top/bottom for clean vertical repeat. Dirt = warm tan with rut bands; gravel = light grey compacted bed with dark wheel-track pairs.
+- **src/roads.js** — roads now render with `makeRoadTex()` loader (U across width clamped, V along-road RepeatWrapping, one repeat per 10 m, sRGB + 8× anisotropy); dirt road renders its texture, gravel its own. Roads sorted by type (dirt below gravel) and lifted `0.09m + typeRank*0.03m + perTypeIndex*0.008m`, eliminating z-fighting at same- and cross-type intersections.
+
 ## 2026-11-27 — shadow quality + draw-distance settings, shadows for all objects
 
 - **src/main.js** — shadow setup rewritten: sun + target exposed as reusable objects, follow-mounted to the player (or menu camera in menu state) every frame via `updateShadowFocus()`; `applyShadowSettings()` drives quality (Off / Low / High) and draw distance (100/300/500 m). Low = 2048 shadow map; High = 4096 map with tighter bias (-0.0002) and normalBias (0.015×scale) for crisp edges; Off disables `sun.castShadow` entirely. Shadow camera box half-extent = draw distance, far = 600 m, PCFSoftShadowMap retained. Both settings persist in localStorage (`iv-shadow-quality`, `iv-shadow-distance`).

@@ -57,7 +57,7 @@ Enemies engage at up to 150 m: they fire only when within range, roughly aimed, 
 
 - `src/clouds.js` — gradient sky dome with raymarched volumetric clouds: inward-facing sphere (radius 900) centered on the camera each frame; fragment shader does horizon→zenith gradient, sun disc/glow, then a 48-step raymarch through a 3D value-noise slab (y 120–300 m) with 4-octave fBm, domain-warped edges, anisotropic horizontal stretch, time drift, slab-edge fade, and height-aware lighting (bright tops, gray-blue bellies, warm sun-facing edge glow); fog blend below 0.12 elevation. `iv-no-sky=1` localStorage disables the dome entirely for debugging. Coverage is tuned so ~25–30% of the sky is covered; tweak the smoothstep thresholds / slab bounds in `src/clouds.js`.
 - `src/main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring
-- `src/roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM)
+- `src/roads.js` — terrain-conforming road ribbons from level.json polylines (per-road widthM). Dirt road (`public/textures/dirt-road.png`) and gravel road (`public/textures/gravel-road.png`) textures: full road width across-U, repeat along-V every 10 m, seamless-edge-faded vertically; both are Qwen Image 2.1, 512×512. Roads are sorted by type (dirt below gravel) and lifted slightly per index to avoid z-fighting at intersections.
 - `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, scenery, object/river/border collision
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
