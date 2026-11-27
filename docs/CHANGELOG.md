@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-27 — machinegun emplacement asset + editor placement
+
+- **assets_src/mg_emplacement/** (new) — Blender build (`build.py` + editable `.blend` + preview scripts) producing `public/models/mg_emplacement.glb` (~4.6 m footprint, low-poly, 7 materials). Isometric 3-row sandbag arc (~180°) in front, pedestal, squat turret with gun shield, receiver, barrel and muzzle brake over the bag line. Turret is a `Mg_Turret` node (pivot at pedestal top) under which the gun assembly is parented — a static model for now, ready for a ±45° traverse rig; sandbags static. 7-material low-poly asset, 49 meshes.
+- **src/scale.js** — added `mg_emplacement` entry (`props`, lengthM 4.6, editor block: category object, footprintR 2.3, collidable, tan color).
+- **src/mg_emplacement.js** (new) — loader scaling footprint to `lengthM`.
+- **src/objects.js** — registered the new loader; places via the radial object collider branch (with trees/farmhouses).
+- **README.md / AGENTS.md** — module docs + asset paragraph.
+
 ## 2026-11-27 — barley in crops regions
 
 - **src/barley.js** (new) — instanced crossed-quad barley tufts (`public/textures/barley_tuft.png`) in `crops` regions. Deterministic grid anchored to world origin: rows at even X (2 m spacing, running North/South), plants 1 m apart along Z, uniform 0.7 m scale (texture aspect preserved). Wind sway + distance fade + per-instance tint identical to grass. Rows skip roads, obstacle circles, bridge span and rim-height terrain. Auto-rendered at startup (no editor generation step).

@@ -5,12 +5,14 @@ import { ASSETS } from './scale.js';
 import { terrainHeight, treeColliders, farmhouseColliders, objectColliders, rebuildTreeGrid } from './world.js';
 import { loadTreeModel } from './tree.js';
 import { loadFarmhouseModel } from './farmhouse.js';
+import { loadMgEmplacementModel } from './mg_emplacement.js';
 
 export const occluderMeshes = []; // solid world occluders (farmhouses), for camera/barrel raycasts
 
 const loaders = {
   tree: loadTreeModel,
   farmhouse: loadFarmhouseModel,
+  mg_emplacement: loadMgEmplacementModel,
 };
 
 function rootedBase(x, z, baseRadius) {
