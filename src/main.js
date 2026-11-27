@@ -6,6 +6,7 @@ import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects, occluderMeshes } from './objects.js';
 import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
+import { createBarley } from './barley.js';
 import { Shell, predictPath, SHELL_SPEED, GRAVITY } from './shells.js';
 import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
@@ -130,6 +131,7 @@ scene.add(sun);
 let models = null;            // {tank_6: gltf, tank_5: gltf, ...} loaded before match start
 let level = null;              // validated level.json (see src/level.js)
 let grass = null;              // instanced grass tufts (see grass.js)
+let barley = null;             // instanced barley in crops regions (see barley.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
 let player = null, enemies = [], shells = [], effects = [];
 let aimYaw = SPAWN_HEADING, aimPitch = -0.03;
@@ -309,8 +311,7 @@ function tryFire(tank) {
   tank.flashMesh.visible = true;
   tank.muzzleFlash = 0.09;
   tank.muzzleWorldPos(_muzzle);
-  tank.barrelWorldDir();
-  const dir = tank.barrelWorldDir();
+  const dir = tank.sampleFireDir();
   const vel = dir.clone().multiplyScalar(SHELL_SPEED);
   const shell = new Shell(scene, _muzzle, vel, tank);
   shells.push(shell);
@@ -651,6 +652,7 @@ function loop(t) {
       updateMenuCamera();
     }
     if (grass) grass.update(t / 1000);
+    if (barley) barley.update(t / 1000);
     renderer.render(scene, camera);
   } catch (err) {
     // A bad frame should never permanently wedge the game; log and keep the loop alive.
@@ -687,6 +689,7 @@ async function init() {
     const objectSources = await loadObjectSources(level);
     placeObjects(scene, level, objectSources);
     grass = createGrass(scene, level);
+    barley = createBarley(scene, level);
     resetMatch();
   } catch (err) {
     console.error('Failed to load tank models', err);

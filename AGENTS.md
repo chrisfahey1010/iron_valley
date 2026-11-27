@@ -23,6 +23,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM); built after `buildWorld`
 - `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter; also suppresses grass on road ribbons
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
+- `barley.js` — instanced barley tufts in crops regions: deterministic rows (even X, 2 m spacing N/S, 1 m along Z, 0.7 m tall), wind sway + distance fade, no generation step; crops regions have no grass scatter and instead render barley.
 - `grass.js` — instanced tuft renderer (crossed quads, wind sway, distance fade, per-instance tint); built in `main.js` init after trees. Lighting: forces a world-up normal in the fragment shader so both crossed-quad sides light identically (hemisphere + sun); do not remove, or back-facing sides go dark again. Grass neither casts nor receives shadows
 - `scale.js` — world-scale manifest (`ASSETS`): real-world sizes in meters per asset; `tankRadius()` derives collision radius
 - `tank.js` — tank rig (hull → turret yaw → barrel pitch → muzzle), grounding, damage

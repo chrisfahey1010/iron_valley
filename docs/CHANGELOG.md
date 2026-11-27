@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-27 — barley in crops regions
+
+- **src/barley.js** (new) — instanced crossed-quad barley tufts (`public/textures/barley_tuft.png`) in `crops` regions. Deterministic grid anchored to world origin: rows at even X (2 m spacing, running North/South), plants 1 m apart along Z, uniform 0.7 m scale (texture aspect preserved). Wind sway + distance fade + per-instance tint identical to grass. Rows skip roads, obstacle circles, bridge span and rim-height terrain. Auto-rendered at startup (no editor generation step).
+- **src/main.js** — imports/instantiates `createBarley()` after grass, updates it in the game loop.
+- **README.md / AGENTS.md** — module docs updated.
+
 ## 2026-11-26 — enemy engagement: 150 m clear-shot range
 
 - **src/main.js** — `TUNING.enemy.fireRange` raised 34 → 150 m. New `hasClearShot()` LOS check: ray from enemy muzzle toward a point ~1.4 m above the player, marching terrain and raycasting solid farmhouse occluders (trees passable). Enemies now fire when within 150 m, roughly aimed, and the shot is clear; they keep approaching otherwise.
