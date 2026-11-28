@@ -21,7 +21,7 @@ No test or lint scripts exist; verify changes by `npm run build` and playing in 
 - `main.js` — game state, match loop, input, camera rig, enemy AI, HUD wiring. `TUNING` block at top holds player/enemy speed, damage, reloads, counts — edit here for gameplay tuning.
 - `tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch min/max, inaccuracyDeg), keyed by modelKey; consumed by tank.js `trackAim`, `sampleFireDir`, and the player/AI aim code in main.js. Add new vehicles here.
 - `world.js` — 1 km terrain height fn, river centerline + bridge, scenery, object/river/border collision
-- `roads.js` — terrain-conforming road ribbons from level.json polylines (dirt = tan, gravel = grey, per-road widthM); built after `buildWorld`
+- `roads.js` — terrain-conforming road ribbons from level.json polylines (dirt/gravel, per-road widthM); built after `buildWorld`. Both road types textured (Qwen Image 2.1, 512×512): tire/rut bands run along road length, full texture across-U, repeat along-V every 10 m; roads sorted dirt-below-gravel and lifted slightly per index to avoid z-fighting at intersections
 - `ground.js` — ground-zone classifier over world.js data (water/riverbank/spawn/rim/clearing/grass); consumed by grass scatter; also suppresses grass on road ribbons
 - `farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable; farmhouses registered in world.js (colliders) and excluded from grass/trees
 - `barley.js` — instanced barley tufts in crops regions: deterministic rows (even X, 2 m spacing N/S, 1 m along Z, 0.7 m tall), wind sway + distance fade, no generation step; crops regions have no grass scatter and instead render barley.
