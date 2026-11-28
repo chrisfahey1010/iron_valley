@@ -235,7 +235,10 @@ export class MgEmplacement {
     }
     const aimed = Math.abs(aim.clamped - this.localYaw) < MG_TUNING.aimTolerance
       && Math.abs(aim.clampedPitch - this.pitch) < MG_TUNING.aimTolerance;
-    if (aim.dist <= MG_TUNING.range && aimed && hasClearShot(player.pos)) {
+    // the player must be inside the turret's swivel arc (and not merely
+    // beyond it, where the turret would sit clamped at the edge firing blind)
+    const withinArc = Math.abs(aim.localTarget) <= MG_TUNING.arcDeg * DEG;
+    if (aim.dist <= MG_TUNING.range && withinArc && aimed && hasClearShot(player.pos)) {
       this.burstTimer = MG_TUNING.burstTime;
       this.bulletTimer = 0;
     }

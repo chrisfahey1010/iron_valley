@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-27 — MG emplacement fire-arc gate + shell-hit regression fix
+
+- **src/objects.js** — MG emplacement object collider is now tagged `kind: 'mg'` (keeps tank-movement push-out).
+- **src/shells.js** — `objectHit()` skips `kind: 'mg'` colliders. Previously every bullet (spawned inside the 2.3 m collider, so consumed on the first frame) and every tank shell aimed at an emplacement (consumed before reaching the turret/sandbag logic) was swallowed by this generic collider — bullets never rendered and tank shells could not destroy the emplacement.
+- **src/mg_emplacement.js** — the fire gate now also requires the player to be inside the turret's ±45° yaw arc (`withinArc`); previously the turret would slew to the edge of its arc and fire blind at an out-of-arc player.
+- **README.md / AGENTS.md** — arc-gate and shell-hit behaviour docs updated.
+
 ## 2026-11-27 — textured dirt/gravel road ribbons + intersection z-fighting fix
 
 - **public/textures/dirt-road.png / gravel-road.png** (new) — Qwen Image 2.1, 512×512, full road width across-U (tire/wheel tracks + shoulders), seamless-edge crossfade on top/bottom for clean vertical repeat. Dirt = warm tan with rut bands; gravel = light grey compacted bed with dark wheel-track pairs.

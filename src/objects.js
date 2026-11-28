@@ -69,7 +69,11 @@ export function placeObjects(scene, level, sources) {
         // oriented box (local X = model length axis), slightly trimmed to its edges
         farmhouseColliders.push({ x: o.x, z: o.z, rot: o.rotation || 0, halfW: 6.7 * scale, halfD: 3.7 * scale });
       } else {
-        objectColliders.push({ x: o.x, z: o.z, r: r * scale });
+        // MG emplacements keep movement collision but are skipped by shells in
+        // shells.js (they have their own turret/sandbag hit logic there).
+        const entry = { x: o.x, z: o.z, r: r * scale };
+        if (o.type === 'mg_emplacement') entry.kind = 'mg';
+        objectColliders.push(entry);
       }
     }
   }

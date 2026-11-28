@@ -31,6 +31,7 @@ function trunkHit(q) {
 function objectHit(q) {
   // Object colliders (props like flagpole): small circles with a tall column.
   for (const o of objectColliders) {
+    if (o.kind === 'mg') continue;  // MG emplacements have their own shell hit logic
     const dx = q.x - o.x, dz = q.z - o.z;
     const r = (o.r ?? 0.5) + 0.1;
     if (dx * dx + dz * dz > r * r) continue;
