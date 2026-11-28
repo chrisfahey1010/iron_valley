@@ -849,4 +849,4 @@ async function init() {
 }
 init();
 
-window.__iv = { get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get mgas(){return mgas}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+window.__iv = { wind, get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get mgas(){return mgas}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };

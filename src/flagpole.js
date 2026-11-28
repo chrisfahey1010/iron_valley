@@ -47,6 +47,8 @@ export class Flagpole {
     this.def = def;
     this.group = instance;
     this.worldScale = this.group.scale.x;
+    // Accumulated cloth phase — monotonic (never jumps with gusts/wind changes)
+    this._phase = 0;
 
     this.textures = {};
     this.textures.enemy = flagTexLoader.load(FLAG_URL.enemy);
@@ -146,7 +148,13 @@ export class Flagpole {
   // One frame of cloth animation + wind-following yaw. Runs every frame, even
   // when the lowering/raising state machine is paused or the match is done.
   tickCloth(dt) {
-    this._animateCloth(performance.now() / 1000);
+    const speed = wind.speed();
+    const speedN = Math.min(1, speed / 7);
+    // Phase advances monotonically regardless of gusts/direction changes —
+    // the cloth can never jump or "run backwards" when the wind fluctuates.
+    this._phase += dt * (2.4 + 1.8 * speedN);
+    const droop = wind.droop(); // 0 = streams, 1 = hangs limp
+    this._animateCloth(this._phase, speed, speedN, droop);
     // Follow the wind: rotate the anchor (and thus the flag) so the flag's
     // +X axis tracks the wind direction in world space. Short-range lerp is
     // safe here: the wind direction oscillates well within ±0.35 rad.
@@ -155,25 +163,34 @@ export class Flagpole {
     this.anchor.rotation.y += (target - this.anchor.rotation.y) * Math.min(1, dt * FLAGPOLE_TUNING.yawDamp);
   }
 
-  _animateCloth(time) {
+  // Gravity droop + wind flutter.
+  // - sag: the fly edge curves downward toward the ground; 0 at full wind,
+  //   ~0.9 * width at no wind — this is what makes the flag hang limp in
+  //   light air instead of looking like a rigid flat plank.
+  // - flutter: two-frequency sideways wave, amplitude tied to wind speed.
+  //   At no wind the amplitude stays near zero and the flag sways almost
+  //   motionless — which is the realistic look. Pinned at the hoist edge
+  //   (t=0) so the pole attachment never drifts.
+  _animateCloth(phase, speed, speedN, droop) {
     const mesh = this._flagMesh;
     if (!mesh || !this._baseX) return;
     const geo = mesh.geometry;
     const pos = geo.attributes.position;
     const w = this._flagWidth;
-    const speed = wind.speed();
-    const speedN = Math.min(1.6, speed / 7);
-    const amp = 0.14 + 0.32 * speedN;      // m at the fly edge
-    const phase = time * (2.6 + 1.5 * speedN);
+    const amp = 0.05 + 0.34 * speedN;   // m at the fly edge
+    const sagMax = droop * w * 0.9;      // fly-edge drop when limp
     const fly = speedN * 0.9;
     for (let i = 0; i < pos.count; i++) {
       const x = this._baseX[i], y = this._baseY[i];
-      const t = x / w;                      // 0 = hoist, 1 = fly
-      const tq = Math.pow(t, 1.6);           // cloth amplitude grows toward the fly
+      const t = x / w;                   // 0 = hoist, 1 = fly
+      const tq = Math.pow(t, 1.4);       // amplitude grows toward the fly
+      // the cloth pinned at the hoist edge, sagging parabola toward the fly
+      const sag = sagMax * t * t;
+      // sideways flutter in the wind (grows toward the fly edge)
       const z = amp * tq * (Math.sin(phase - x * 2.4 - y * 1.3) + 0.55 * Math.sin(phase * 1.85 - x * 5.1 + y * 0.8 + 1.1));
       const dy = 0.10 * fly * tq * Math.sin(phase * 0.58 - x * 1.7 + 0.6);
       pos.setZ(i, z);
-      pos.setY(i, y + dy);
+      pos.setY(i, y - sag + dy);
     }
     pos.needsUpdate = true;
     geo.computeVertexNormals();

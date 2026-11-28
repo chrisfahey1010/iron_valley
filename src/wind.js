@@ -36,4 +36,13 @@ export const wind = {
     return this.baseDir + this.dirOscAmp * Math.sin(this.time * this.dirOscFrequency + 1.2);
   },
 
+  // 0 = flag streams fully in the wind; 1 = flag hangs limp under gravity.
+  // Smoothstep mapping from 1.5 m/s (fully limp) to 7 m/s (streaming).
+  droop() {
+    const s = this.speed();
+    const t = (s - 1.5) / 5.5;
+    const c = Math.min(1, Math.max(0, t));
+    return 1 - c * c * (3 - 2 * c);
+  },
+
 };
