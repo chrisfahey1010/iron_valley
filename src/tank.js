@@ -15,6 +15,23 @@ const loader = new GLTFLoader();
 
 const _tmpV = new THREE.Vector3();
 
+function makeFlashSpriteTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0.0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.18, 'rgba(255,240,190,0.95)');
+  g.addColorStop(0.42, 'rgba(255,170,70,0.45)');
+  g.addColorStop(0.75, 'rgba(255,110,25,0.12)');
+  g.addColorStop(1.0, 'rgba(255,90,10,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export async function loadTankModels() {
   const entries = await Promise.all(Object.entries(ASSETS).filter(([, a]) => a.kind === 'tank').map(async ([key, asset]) => {
     const gltf = await new Promise((res, rej) => loader.load(asset.url, res, undefined, rej));
@@ -190,20 +207,48 @@ export class Tank {
     } else {
       this.barrelAxis = null;
     }
-    // muzzle flash (hidden) as child of muzzle — scale it so it renders ~0.5 units regardless of model scale
-    // note: gBbox/gSize were computed BEFORE this block; guard for the no-gun fallback where gunNode is null
-    const flash = new THREE.Mesh(
-      new THREE.ConeGeometry(0.32, 1.0, 6),
-      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.95 })
-    );
-    // compute the world scale of the muzzle so the cone renders the right size in world units
+    // muzzle flash rig (hidden) as child of the muzzle — barrel-aligned, world-scale-normalized.
+    // Built from additive billboard sprites + a short core cone + a point light; animated per shot.
     this.muzzle.updateWorldMatrix(true, false);
     const flashWorldScale = this.muzzle.getWorldScale(new THREE.Vector3()).x || 1;
-    flash.scale.setScalar(1 / Math.max(flashWorldScale, 1e-6));
-    flash.rotation.x = Math.PI / 2;
-    flash.visible = false;
-    this.muzzle.add(flash);
-    this.flashMesh = flash;
+    this.flashGroup = new THREE.Group();
+    this.flashGroup.scale.setScalar(1 / Math.max(flashWorldScale, 1e-6));
+    this.flashGroup.visible = false;
+
+    const tex = makeFlashSpriteTexture();
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffdf7e, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const core = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.05, 8, 1, true), coreMat);
+    core.rotation.x = Math.PI / 2;
+    core.position.z = 0.55;
+    this.flashGroup.add(core);
+
+    const mkSprite = (color, scale, opacity) => {
+      const m = new THREE.SpriteMaterial({ map: tex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+      const sp = new THREE.Sprite(m);
+      sp.scale.set(scale, scale, 1);
+      sp.position.z = 0.35;
+      this.flashGroup.add(sp);
+      return sp;
+    };
+    this.flashCoreSprite = mkSprite(0xfff6c8, 0.85, 0.95);
+    this.flashHaloSprite = mkSprite(0xff9330, 2.3, 0.55);
+    this.flashStreakSprite = mkSprite(0xffc23d, 1.5, 0.7);
+
+    this.flashLight = new THREE.PointLight(0xffa640, 0, 14, 2);
+    this.flashLight.position.set(0, 0, 0.6);
+    this.flashGroup.add(this.flashLight);
+
+    // flash objects must never be hit by the game's aim/shell raycasters
+    this.flashGroup.traverse(o => { o.raycast = () => {}; });
+    this.muzzle.add(this.flashGroup);
+    this._flashWorldScale = flashWorldScale;
+    this.flashMesh = this.flashGroup; // kept as the visibility toggle used by main.js
+    this.flashTex = tex;
+    this.flashParts = { core, coreMat };
+    this.flashCore = core;
+    this.flashT = 0;
+    this.flashDuration = 0.10;
+    this.flashRotation = 0;
 
     // animation mixer (tracks/body only)
     this.mixer = new THREE.AnimationMixer(this.model);
@@ -305,14 +350,48 @@ export class Tank {
 
   muzzleWorldPos(out) { return this.muzzle.getWorldPosition(out); }
 
+  fireFlash() {
+    this.flashRotation = Math.random() * Math.PI * 2;
+    this.flashDuration = 0.08 + Math.random() * 0.04;
+    this.flashT = 0;
+    this.flashGroup.visible = true;
+    this.muzzleFlash = this.flashDuration;
+  }
+
+  updateFlash(dt) {
+    if (!this.flashGroup || !this.flashGroup.visible) return;
+    this.flashT += dt;
+    const t = Math.min(this.flashT / this.flashDuration, 1);
+    const inv = 1 - t;
+    const pulse = 0.75 + inv * 0.55 + Math.random() * 0.08;
+    this.flashGroup.scale.setScalar((1 / Math.max(this._flashWorldScale || 1, 1e-6)) * pulse);
+    this.flashCoreSprite.material.opacity = 0.95 * Math.pow(inv, 1.3);
+    this.flashHaloSprite.material.opacity = 0.55 * Math.pow(inv, 1.6);
+    this.flashStreakSprite.material.opacity = 0.7 * Math.pow(inv, 1.8);
+    this.flashCoreSprite.scale.set(0.85 * pulse, 0.85 * pulse, 1);
+    this.flashHaloSprite.scale.set(2.3 * (0.7 + t * 0.8), 2.3 * (0.7 + t * 0.8), 1);
+    this.flashStreakSprite.scale.set(1.5 * pulse, 1.5 * pulse, 1);
+    this.flashStreakSprite.material.rotation = this.flashRotation + t * 1.2;
+    this.flashCore.material.opacity = 0.95 * inv;
+    this.flashLight.intensity = 9 * inv * inv;
+    if (t >= 1) this.flashGroup.visible = false;
+  }
+
   dispose() {
     this.group.traverse(o => {
       if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); }
     });
     if (this.mixer) { this.mixer.stopAllAction(); this.mixer = null; }
-    // flash cone geometry is unique to this tank (shared geometries are never disposed)
-    if (this.flashMesh && this.flashMesh.geometry) this.flashMesh.geometry.dispose();
-    if (this.flashMesh) this.flashMesh = null;
+    // flash rig is unique to this tank — dispose its geometries/materials/texture
+    if (this.flashGroup) {
+      this.flashGroup.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
+      if (this.flashTex) this.flashTex.dispose();
+      this.flashGroup = null;
+    }
+    this.flashMesh = null;
     if (this.group.parent) this.group.parent.remove(this.group);
   }
 

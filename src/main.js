@@ -384,7 +384,8 @@ $('restart-btn').addEventListener('click', () => {
 function tickMuzzleFlash(tank, dt) {
   if (tank.muzzleFlash > 0) {
     tank.muzzleFlash -= dt;
-    if (tank.muzzleFlash <= 0) tank.flashMesh.visible = false;
+    tank.updateFlash(dt);
+    if (tank.muzzleFlash <= 0 && tank.flashGroup) tank.flashGroup.visible = false;
   }
 }
 
@@ -394,8 +395,7 @@ const _fwd = new THREE.Vector3();
 function tryFire(tank) {
   if (!tank.alive || tank.reload > 0) return;
   tank.reload = tank.isPlayer ? TUNING.playerReload : TUNING.enemyReload;
-  tank.flashMesh.visible = true;
-  tank.muzzleFlash = 0.09;
+  tank.fireFlash();
   tank.muzzleWorldPos(_muzzle);
   const dir = tank.sampleFireDir();
   const vel = dir.clone().multiplyScalar(SHELL_SPEED);
@@ -791,7 +791,7 @@ function loop(t) {
   const frameStart = performance.now();
   try {
     if (state === 'playing' && !paused) {
-      update(dt);
+      try { update(dt); } catch (err) { console.error('Iron Valley update error:', err); }
     } else if (state === 'menu') {
       updateMenuCamera();
     }

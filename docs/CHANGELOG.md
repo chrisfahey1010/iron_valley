@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-28 — World-scale muzzle flash rig for tanks
+
+- **src/tank.js** — replaced the flat yellow flash cone with a barrel-aligned additive flash rig parented to the muzzle (unit-normalized by `1/worldScale`): canvas-generated radial-gradient sprite texture, two additive sprites (bright core + wide halo, plus a rotating streak), a short additive core cone, and a decaying orange `PointLight` (intensity ~9, distance 14). `fireFlash()` randomizes duration (0.08–0.12 s) and rotation; `updateFlash(dt)` animates scale/opacity/light falloff over the shot, then hides the rig. Flash objects have `raycast = () => {}` so aim/shell raycasters never touch them. `dispose()` now tears down the whole rig (sprites, core cone, light, texture).
+- **src/main.js** — `tryFire()` calls `tank.fireFlash()`; `tickMuzzleFlash()` drives `updateFlash(dt)` instead of a bare visible toggle.
+- Docs: `docs/TANK_RIG_REFERENCE.md` rig tree updated.
+
+## 2026-11-28 — freeze-on-start fix (sprite raycast + inner update guard)
+
+- **src/tank.js** — flash rig sprites/core are made non-raycastable (`raycast = () => {}`); previously `getWhiteAimPoint()` threw `TypeError: Cannot read properties of null (reading 'matrixWorld')` inside `Sprite.raycast`, which aborted the frame's try-block every frame and froze the whole scene when starting a match.
+- **src/main.js** — the `update(dt)` call in the render loop now has its own inner `try/catch`, so a simulation error can no longer skip the ambient updates (sky/wind/flags/grass) and the render itself.
+
 ## 2026-11-28 — Tank engine SFX + pause-menu sound freeze
 
 - **public/audio/tank-idle.mp3** (new) — 5 s seamless idle loop (quiet low-RPM rumble, Stable Audio 3, idle variant B, 5 ms edge fades, mp3).

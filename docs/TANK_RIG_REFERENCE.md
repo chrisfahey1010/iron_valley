@@ -16,7 +16,8 @@ scene
             └─ barrelPivot (group at gun node local pos, attach(gunNode))
                └─ gun node (Tank_Gun)
                   └─ muzzle (Object3D at far end of gun's long axis)
-                     └─ flash cone (hidden; scaled 1/worldScale)
+                     └─ flash rig (hidden; scaled 1/worldScale)
+                        └─ sprites (core/halo/streak) + core cone + PointLight; raycast = noop
 ```
 
 Key points:
@@ -31,7 +32,7 @@ Key points:
   (`cross(muzzleDir, up)` in turret-local space) — **never pitch the gun about turret-local X**.
   Positive pitch raises the tip. Turret pitch is intentionally absent.
 - **Muzzle**: Object3D placed at the far end of the gun's longest axis (farther from the
-  turret pivot), by bbox comparison. Spawns flash cone + is the aim/muzzle world-pos anchor.
+  turret pivot), by bbox comparison. Spawns the muzzle flash rig (additive sprites + core cone + point light, animated by fireFlash()/updateFlash()) + is the aim/muzzle world-pos anchor.
 - **Grounding**: hull pose reads terrain heights at nose/tail/left/right (e=1.4m) and applies
   `rotation.x = atan2(hB - hF, 2e) * 0.8`, `rotation.z = atan2(hL - hR, 2e) * 0.8 + wreckTilt`.
 

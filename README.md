@@ -61,7 +61,7 @@ Enemies engage at up to 150 m: they fire only when within range, roughly aimed, 
 - `src/world.js` — 1 km terrain height function, winding river + placeholder bridge, scenery, object/river/border collision
 - `src/farmhouse.js` — Fachwerk farmhouse loading + scatter (~12, a few near spawn), collidable
 - `src/scale.js` — world-scale manifest (ASSETS) + scale/measure helpers
-- `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage, `trackAim()` limited-rate turret/barrel tracking
+- `src/tank.js` — tank rig (hull → turret yaw pivot → barrel pitch pivot → muzzle), grounding, damage, `trackAim()` limited-rate turret/barrel tracking, barrel-aligned muzzle-flash rig (additive sprites + core cone + orange point light; `fireFlash()`/`updateFlash()`)
 - `src/tank_stats.js` — per-vehicle stats (turret/barrel rate, hull steering rate, pitch limits), keyed by modelKey
 - `src/shells.js` — gravity projectiles (500 m/s, 9.81 m/s²), segmented collision, trail, impact FX, trajectory prediction
 - `src/ground.js` — ground-zone classifier (`groundZone`): water / riverbank / spawn / rim / clearing / grass; used by grass scatter
