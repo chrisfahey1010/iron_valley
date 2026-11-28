@@ -19,7 +19,7 @@ npm run build    # production build into dist/
 npm run preview  # serve the production build
 ```
 
-Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Grass is instanced tufts (`src/grass.js`, ~120k, crossed quads with per-instance tint + wind sway; uniform 0.5–1.0 m scale, fade 120–400 m) over the terrain's tiled grass ground texture; tunables at the top of `src/grass.js`. Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3). Shell-fire SFX: `public/audio/shell-fire.mp3` (Stable Audio 3, One-shot). Impact SFX: `public/audio/impact-{tank,terrain,rock}-{a,b}.mp3` (Stable Audio 3, One-shot, randomized per impact).
+Open http://localhost:4173/ (or the URL printed by `npm run dev`). The game is fully self-contained (Three.js, no external assets). Grass is instanced tufts (`src/grass.js`, ~120k, crossed quads with per-instance tint + wind sway; uniform 0.5–1.0 m scale, fade 120–400 m) over the terrain's tiled grass ground texture; tunables at the top of `src/grass.js`. Combat theme: `public/audio/combat-theme.mp3` (60s loop, Stable Audio 3). Shell-fire SFX: `public/audio/shell-fire.mp3` (Stable Audio 3, One-shot). MG burst SFX: `public/audio/mg-burst.mp3` (Stable Audio 3, SFX, 3 s heavy machinegun rattle loop). Impact SFX: `public/audio/impact-{tank,terrain,rock}-{a,b}.mp3` (Stable Audio 3, One-shot, randomized per impact).
 
 ## Controls
 
@@ -68,7 +68,7 @@ Enemies engage at up to 150 m: they fire only when within range, roughly aimed, 
 - `src/forest.js` — seeded forest-tree scatter: `generateForestTrees(level, region)` for `forest` regions (deterministic, min 3 m trunk spacing, avoids roads/river/spawns/objects)
 - `src/grass.js` — instanced crossed-quad grass tufts with wind sway + distance fade; seeded deterministic scatter over the playable bounds.
 - `src/barley.js` — instanced crossed-quad barley in `crops` regions, placed in North/South rows (rows at even X, 2 m spacing, plants 1 m apart along Z, 0.7 m tall uniform scale, `public/textures/barley_tuft.png`); deterministic grid anchored to world origin; wind sway + distance fade + per-instance tint like grass. No editor/generation step — barley always renders from the level data. Skips roads, obstacle circles, bridge span and rim. Lighting is faked via a constant world-up normal forced in the fragment shader (after `normal_fragment_maps`), so both sides of the crossed quads share hemisphere + sun light — do not remove this or grass will flip dark on one side again. Receives sun shadows (receiveShadow) so tufts darken inside building shadows; no self-cast shadows
-- `src/audio.js` — positional shell-fire and impact SFX (speed-of-sound delay + distance attenuation); impact kind derived from shell-impact reason (tank / rock / terrain), variant picked randomly per impact
+- `src/audio.js` — positional shell-fire, impact and MG-burst SFX (speed-of-sound delay + distance attenuation); MG burst plays once per burst at burst start (first bullet), constant loudness; impact kind derived from shell-impact reason, variant picked randomly per impact
 - `src/styles.css` — HUD, cues, overlays
 
 Tuning values (player/enemy speed, damage, reloads, counts) live in the `TUNING` block at the top of `src/main.js`. Per-vehicle stats (turret/barrel rate, hull steering rate, pitch limits) live in `src/tank_stats.js`.

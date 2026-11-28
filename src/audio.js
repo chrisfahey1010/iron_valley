@@ -5,6 +5,8 @@
 const SOUND_SPEED = 343; // m/s (game units ~ meters)
 const SFX_VOLUME = 0.9;
 
+const MG_BURST_URL = '/audio/mg-burst.mp3';
+
 const IMPACT_FILES = {
   tank: ['/audio/impact-tank-a.mp3', '/audio/impact-tank-b.mp3'],
   terrain: ['/audio/impact-terrain-a.mp3', '/audio/impact-terrain-b.mp3'],
@@ -58,6 +60,7 @@ async function ensureBuffer(url) {
 export function unlockAudio() {
   ensureBuffer('/audio/shell-fire.mp3').catch(() => {});
   for (const urls of Object.values(IMPACT_FILES)) for (const url of urls) ensureBuffer(url).catch(() => {});
+  ensureBuffer(MG_BURST_URL).catch(() => {});
 }
 
 function scheduleAt(buffer, worldPos, listenerPos, volume = SFX_VOLUME) {
@@ -80,6 +83,16 @@ export async function playShellFireAt(worldPos, listenerPos) {
     scheduleAt(buffer, worldPos, listenerPos);
   } catch (err) {
     console.warn('shell-fire sfx failed', err);
+  }
+}
+
+export async function playMgBurstAt(worldPos, listenerPos) {
+  try {
+    const buffer = await ensureBuffer(MG_BURST_URL);
+    if (!buffer) return;
+    scheduleAt(buffer, worldPos, listenerPos);
+  } catch (err) {
+    console.warn('mg-burst sfx failed', err);
   }
 }
 

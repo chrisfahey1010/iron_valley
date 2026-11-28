@@ -12,7 +12,7 @@ import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
 import { createBarley } from './barley.js';
 import { Shell, predictPath, SHELL_SPEED, GRAVITY } from './shells.js';
-import { playShellFireAt, playImpactAt, unlockAudio, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
+import { playShellFireAt, playImpactAt, unlockAudio, playMgBurstAt, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
 
 // ---------- tunables ----------
 const TUNING = {
@@ -828,7 +828,7 @@ async function init() {
     const objectSources = await loadObjectSources(level);
     const placed = placeObjects(scene, level, objectSources);
     const mgInstances = placed.filter(i => i.def.type === 'mg_emplacement');
-    mgas = mgInstances.map(i => new MgEmplacement(scene, i.def, i.instance, onMgFire));
+    mgas = mgInstances.map(i => new MgEmplacement(scene, i.def, i.instance, onMgFire, (muzzlePos) => playMgBurstAt(muzzlePos, camera.position)));
     if (mgas.length) console.log(`placed ${mgas.length} MG emplacements`);
     const fpInstances = placed.filter(i => i.def.type === 'flagpole');
     flagpoles = fpInstances.map(i => new Flagpole(scene, i.def, i.instance));

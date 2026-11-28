@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-27 — MG burst SFX + bullet impact SFX deferred
+
+- **public/audio/mg-burst.mp3** (new) — 3 s MG burst loop (Stable Audio 3 Medium, seed 88, SFX category, dense machinegun rattle, no rhythm/gallop), trimmed to 3.0 s with 10 ms edge fades, mp3. Picked out of 5 candidate clips.
+- **src/audio.js** — `MG_BURST_URL`, preload in `unlockAudio()`, and `playMgBurstAt(worldPos, listenerPos)` (speed-of-sound delay + distance attenuation; constant loudness, no envelope).
+- **src/mg_emplacement.js** — constructor takes optional `onBurstStart`; fires at burst start (first bullet) with the muzzle world position.
+- **src/main.js** — wires `onBurstStart` → `playMgBurstAt(muzzle, camera.position)`.
+- **README.md / AGENTS.md** — docs updated.
+- **Deferred:** bullet-impact SFX on the tank — Stable Audio 3 could not produce the desired "rapid spray of light splinking off armor" sound across multiple prompt/seed sweeps (candidates were too beefy / too sparse). Bullet impacts currently have no SFX. Known gap; no code added.
+
 ## 2026-11-27 — MG emplacement fire-arc gate + shell-hit regression fix
 
 - **src/objects.js** — MG emplacement object collider is now tagged `kind: 'mg'` (keeps tank-movement push-out).

@@ -57,10 +57,11 @@ function wrapAngle(a) {
 }
 
 export class MgEmplacement {
-  constructor(scene, def, instance, onFire) {
+  constructor(scene, def, instance, onFire, onBurstStart) {
     this.def = def;
     this.group = instance;
     this.onFire = onFire;
+    this.onBurstStart = onBurstStart;
     this.turret = instance.getObjectByName('Mg_Turret');
     this.gun = instance.getObjectByName('Mg_GunPivot');
     this.muzzle = instance.getObjectByName('MG_MuzzleBrake');
@@ -241,6 +242,7 @@ export class MgEmplacement {
     if (aim.dist <= MG_TUNING.range && withinArc && aimed && hasClearShot(player.pos)) {
       this.burstTimer = MG_TUNING.burstTime;
       this.bulletTimer = 0;
+      if (this.onBurstStart) { try { this.onBurstStart(this.muzzleWorldPos(_muzzle).clone()); } catch (e) { console.warn('[mg] burst start cb failed', e); } }
     }
   }
 }
