@@ -12,7 +12,7 @@ import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
 import { createBarley } from './barley.js';
 import { Shell, predictPath, SHELL_SPEED, GRAVITY } from './shells.js';
-import { playShellFireAt, playImpactAt, unlockAudio, playMgBurstAt, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume } from './audio.js';
+import { playShellFireAt, playImpactAt, unlockAudio, playMgBurstAt, getMasterVolume, setMasterVolume, getEffectsVolume, setEffectsVolume, ensureTankSfxOnCreate, updateTankSfx, disposeTankSfx, tankSfxDebug, suspendAudio, resumeAudio } from './audio.js';
 
 // ---------- tunables ----------
 const TUNING = {
@@ -78,11 +78,13 @@ function openPause() {
   setMaster(getMasterVolume());
   setVolume(musicBase);
   setEffects(getEffectsVolume());
+  suspendAudio(); // freeze every WebAudio clip (incl. tank loops) mid-frame; music (HTMLAudioElement) keeps playing
   if (document.pointerLockElement) document.exitPointerLock();
 }
 function closePause() {
   paused = false;
   pauseOverlay.classList.add('hidden');
+  resumeAudio(); // everything continues from where it froze
 }
 $('volume-slider').addEventListener('input', e => setVolume(e.target.value / 100));
 $('master-slider').addEventListener('input', e => setMaster(e.target.value / 100));
@@ -230,7 +232,9 @@ function registerMgHusk(mg) {
 
 function makePlayer() {
   const sp = playerSpawn();
-  return new Tank({ modelKey: 'tank_6', x: sp.x, z: sp.z, heading: sp.heading, isPlayer: true, scene, models });
+  const t = new Tank({ modelKey: 'tank_6', x: sp.x, z: sp.z, heading: sp.heading, isPlayer: true, scene, models });
+  ensureTankSfxOnCreate(t);
+  return t;
 }
 
 function makeEnemies() {
@@ -243,9 +247,11 @@ function makeEnemies() {
       { x: -30,  z: -160, heading: -Math.PI / 2 },
     ];
   const enemyModel = 'tank_5'; // all enemies are Panzer IVs for now
-  return spots.slice(0, TUNING.enemyCount).map((s) =>
-    new Tank({ modelKey: enemyModel, x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models })
-  );
+  return spots.slice(0, TUNING.enemyCount).map((s) => {
+    const t = new Tank({ modelKey: enemyModel, x: s.x, z: s.z, heading: s.heading, isPlayer: false, scene, models });
+    ensureTankSfxOnCreate(t);
+    return t;
+  });
 }
 
 function resetMatch() {
@@ -261,8 +267,8 @@ function resetMatch() {
     shells = [];
   }
   try {
-    if (player) player.dispose();
-    for (const e of enemies) e.dispose();
+    if (player) { disposeTankSfx(player); player.dispose(); }
+    for (const e of enemies) { disposeTankSfx(e); e.dispose(); }
   } catch (err) {
     console.error('tank cleanup failed', err);
   }
@@ -704,6 +710,10 @@ function update(dt) {
   player.setPose(dt, motionFor(player.speed, player.headingDelta || 0));
   for (const e of enemies) e.setPose(dt, motionFor(e.speed, e.headingDelta || 0));
 
+  // tank engine SFX (idle / driving loops, crossfaded, positional)
+  updateTankSfx(player, camera.position);
+  for (const e of enemies) updateTankSfx(e, camera.position);
+
   // camera
   updateCamera(dt);
 
@@ -849,4 +859,4 @@ async function init() {
 }
 init();
 
-window.__iv = { wind, get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get mgas(){return mgas}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };
+window.__iv = { wind, tankSfxDebug, get camera(){return camera}, get scene(){return scene}, get camYaw(){return camYaw}, get camPitch(){return camPitch}, get state(){return state}, get player(){return player}, get enemies(){return enemies}, get mgas(){return mgas}, get aimYaw(){return aimYaw}, get aimPitch(){return aimPitch}, get shells(){return shells}, reset: resetMatch, forceAim:(y,p)=>{aimYaw=y;aimPitch=p}, fire:()=>tryFire(player), impacts: [], step:(n=1,dt=1/60)=>{ for(let i=0;i<n;i++) update(dt); renderer.render(scene,camera); } };

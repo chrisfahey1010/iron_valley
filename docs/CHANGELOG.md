@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-28 — Tank engine SFX + pause-menu sound freeze
+
+- **public/audio/tank-idle.mp3** (new) — 5 s seamless idle loop (quiet low-RPM rumble, Stable Audio 3, idle variant B, 5 ms edge fades, mp3).
+- **public/audio/tank-drive.mp3** (new) — 5 s seamless drive loop (continuous full-throttle engine roar, rebuilt from the chopped Audacity recording in `Downloads/tankdriving.wav`: crossfaded cyclic loop with seam crossfades at 2.44 s and the loop boundary, 20 ms safety fade, −23 LUFS / −11 dBFS, mp3).
+- **src/audio.js** — new tank-engine section: `TANK_IDLE_URL`/`TANK_DRIVE_URL`, one looped idle + one looped drive source per tank (tankGain → masterGain, sub-gains for idle/drive), created lazily per tank in `ensureTankSfx` (decoding cached in the existing `ensureBuffer` map), `updateTankSfx` crossfades by speed (idle→drive on `|speed| > 0.3` for the player only — enemies always emit idle; drive pitch/loudness ramps with speed), `disposeTankSfx` on match reset, positional attenuation like shell impacts. Both layers fade to zero on death. `suspendAudio()`/`resumeAudio()` freeze/resume the whole WebAudio graph. Bug fixes: `ensureBuffer` no longer awaits `ctx.resume()` (it never resolves without a trusted gesture — the hang was why tanks never played any SFX); `tankGain` initialised to 1 (was 0 — all engine audio was multiplied by zero); a WeakSet of disposed tanks prevents a mid-load tank from re-registering after `resetMatch()` disposes it.
+- **src/main.js** — `ensureTankSfxOnCreate` on tank creation (player + all enemies), `updateTankSfx` per frame for all tanks, `disposeTankSfx` on match reset; `openPause()`/`closePause()` now call `suspendAudio()`/`resumeAudio()` so every WebAudio clip (tank loops, shell fire, impacts, MG bursts) freezes mid-clip on pause and resumes from the same point — music (`combat-theme.mp3` HTMLAudioElement) is the sole exception and keeps playing. `window.__iv.tankSfxDebug` exposes live idle/drive gain nodes for debugging.
+- **README.md / AGENTS.md** — SFX list + module map + pause behavior docs updated.
+
 ## 2026-11-27 — MG burst SFX + bullet impact SFX deferred
 
 - **public/audio/mg-burst.mp3** (new) — 3 s MG burst loop (Stable Audio 3 Medium, seed 88, SFX category, dense machinegun rattle, no rhythm/gallop), trimmed to 3.0 s with 10 ms edge fades, mp3. Picked out of 5 candidate clips.
