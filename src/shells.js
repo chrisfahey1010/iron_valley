@@ -1,6 +1,6 @@
 // Shell simulation: gravity, segmented collision, trail, impact FX.
 import * as THREE from 'three';
-import { terrainHeight, treeColliders, treesNear, farmhouseColliders, deadTankColliders, WORLD_SIZE } from './world.js';
+import { terrainHeight, treeColliders, treesNear, farmhouseColliders, objectColliders, deadTankColliders, WORLD_SIZE } from './world.js';
 
 const _mgTmp = new THREE.Vector3();
 
@@ -28,6 +28,18 @@ function trunkHit(q) {
   return null;
 }
 
+function objectHit(q) {
+  // Object colliders (props like flagpole): small circles with a tall column.
+  for (const o of objectColliders) {
+    const dx = q.x - o.x, dz = q.z - o.z;
+    const r = (o.r ?? 0.5) + 0.1;
+    if (dx * dx + dz * dz > r * r) continue;
+    const base = terrainHeight(o.x, o.z);
+    if (q.y >= base - 0.3 && q.y <= base + 12) return o;
+  }
+  return null;
+}
+
 // Predict a trajectory from a muzzle pose; returns { point, hitTank, hitObstacle } or null.
 export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
   const dt = 1 / 120;
@@ -48,6 +60,8 @@ export function predictPath({ muzzle, dir, tanks, maxTime = 4.0 }) {
       for (const b of farmhouseColliders) {
         if (boxHit(q, b)) return { point: q, hitTank: null, hitObstacle: 'rock' };
       }
+      // objects (flagpole, ...): pole/trunk-like hit
+      if (objectHit(q)) return { point: q, hitTank: null, hitObstacle: 'rock' };
       // tree trunks (leaves pass through)
       if (trunkHit(q)) return { point: q, hitTank: null, hitObstacle: 'rock' };
       // dead tank wrecks
@@ -123,6 +137,12 @@ export class Shell {
           logImpact({reason:'farmhouse',x:q.x,y:q.y,z:q.z});
           return { consumed: true, reason: 'farmhouse', impactPoint: q };
         }
+      }
+      // objects (flagpole, ...): pole/trunk-like hit
+      if (objectHit(q)) {
+        this.impact(q);
+        logImpact({reason:'object',x:q.x,y:q.y,z:q.z});
+        return { consumed: true, reason: 'object', impactPoint: q };
       }
       // tree trunks (leaves pass through)
       if (trunkHit(q)) {

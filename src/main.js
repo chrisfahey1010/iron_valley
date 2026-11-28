@@ -5,6 +5,7 @@ import { buildWorld, terrainHeight, resolveObstacles, SPAWN, SPAWN_HEADING, dead
 import { loadLevel, validateLevel } from './level.js';
 import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects, occluderMeshes } from './objects.js';
+import { Flagpole } from './flagpole.js';
 import { MgEmplacement, MG_TUNING } from './mg_emplacement.js';
 import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
@@ -202,7 +203,7 @@ let level = null;              // validated level.json (see src/level.js)
 let grass = null;              // instanced grass tufts (see grass.js)
 let barley = null;             // instanced barley in crops regions (see barley.js)
 let state = 'menu';           // menu | loading | playing | victory | defeat
-let player = null, enemies = [], shells = [], effects = [], mgas = [];
+let player = null, enemies = [], shells = [], effects = [], mgas = [], flagpoles = [];
 let aimYaw = SPAWN_HEADING, aimPitch = -0.03;
 const AIM_DIST = 100;        // max distance used when aim ray misses terrain (sky aim)
 const AIM_MAX = 1500;        // max march distance for terrain intersection
@@ -315,6 +316,7 @@ function resetMatch() {
   menuOverlay.classList.add('hidden');
   // reset MG turret/burst state (instances persist across matches)
   for (const mg of mgas) mg.reset();
+  for (const fp of flagpoles) fp.reset();
   startTime = performance.now();
   lastTime = 0;
   try { updateHUD(); } catch (err) { console.error('updateHUD failed', err); }
@@ -639,6 +641,11 @@ function update(dt) {
     mg.update(dt, player, (targetPos) => hasClearShot(mg, targetPos));
   }
 
+  // flagpoles (enemy flag lowers when the player is within range, then USA raises)
+  for (const fp of flagpoles) {
+    fp.update(dt, player ? player.pos : null);
+  }
+
   // shells
   for (let i = shells.length - 1; i >= 0; i--) {
     const r = shells[i].step(dt, [player, ...enemies], mgas);
@@ -816,9 +823,13 @@ async function init() {
     buildWorld(scene, level);
     buildRoads(scene, level);
     const objectSources = await loadObjectSources(level);
-    const mgInstances = placeObjects(scene, level, objectSources).filter(i => i.def.type === 'mg_emplacement');
+    const placed = placeObjects(scene, level, objectSources);
+    const mgInstances = placed.filter(i => i.def.type === 'mg_emplacement');
     mgas = mgInstances.map(i => new MgEmplacement(scene, i.def, i.instance, onMgFire));
     if (mgas.length) console.log(`placed ${mgas.length} MG emplacements`);
+    const fpInstances = placed.filter(i => i.def.type === 'flagpole');
+    flagpoles = fpInstances.map(i => new Flagpole(scene, i.def, i.instance));
+    if (flagpoles.length) console.log(`placed ${flagpoles.length} flagpole(s)`);
     grass = createGrass(scene, level);
     barley = createBarley(scene, level);
     resetMatch();

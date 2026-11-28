@@ -22,6 +22,8 @@ export const ASSETS = {
                         editor: { category: 'object', footprintR: 7, collidable: true, color: '#8a5a3b' } },
   mg_emplacement:     { url: 'models/mg_emplacement.glb', kind: 'props', lengthM: 4.6,
                         editor: { category: 'object', footprintR: 2.3, collidable: true, color: '#7a6a3f' } },
+  flagpole:           { url: 'models/flagpole.glb', kind: 'props', lengthM: 1.2,
+                        editor: { category: 'object', footprintR: 0.6, collidable: true, color: '#9a9a9a' } },
 };
 
 export const DEFAULT_TANK_LENGTH = 6; // meters
