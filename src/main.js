@@ -6,6 +6,7 @@ import { loadLevel, validateLevel } from './level.js';
 import { buildRoads } from './roads.js';
 import { loadObjectSources, placeObjects, occluderMeshes } from './objects.js';
 import { Flagpole } from './flagpole.js';
+import { wind } from './wind.js';
 import { MgEmplacement, MG_TUNING } from './mg_emplacement.js';
 import { Tank, loadTankModels } from './tank.js';
 import { createGrass } from './grass.js';
@@ -787,6 +788,8 @@ function loop(t) {
     if (state === 'playing' && player) updateShadowFocus(player.pos.x, player.pos.z);
     else if (state === 'menu') updateShadowFocus(camera.position.x, camera.position.z);
     if (sky) sky.update(t / 1000, camera);
+    wind.update(dt);
+    for (const fp of flagpoles) fp.tickCloth(dt);
     if (grass) grass.update(t / 1000);
     if (barley) barley.update(t / 1000);
     renderer.render(scene, camera);

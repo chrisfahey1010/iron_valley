@@ -1,13 +1,19 @@
 // Flagpole: model loading + flag animation behavior.
 // Instances are created by src/objects.js from level.json. The pole itself is
-// static geometry (Blender asset, 10 m tall). The flag is a runtime plane
+// static geometry (Blender asset, 10 m tall). The flag is a runtime cloth mesh
 // (width 2.8 m) driven here: enemy flag raised at start; when the player's
-// tank is within 10 m of the pole, the enemy flag lowers to the ground over
-// 10 s, swaps texture to USA, and is raised back up over another 10 s.
-// State is latched: once triggered it never reverts within a match.
+// tank is within 15 m of the pole, the enemy flag lowers to the ground over
+// 10 s, swaps texture to USA, and is raised back up over another 10 s. The
+// animation pauses whenever the player leaves the radius; once finished it is
+// latched for the rest of the match.
+//
+// The flag always ripples in the wind (even when paused) — cloth animation is
+// driven by src/wind.js, the game's shared wind model, so later systems that
+// want wind (grass, trees, flags) can read from the same source.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ASSETS } from './scale.js';
+import { wind } from './wind.js';
 
 const flagTexLoader = new THREE.TextureLoader();
 
@@ -20,7 +26,9 @@ export const FLAGPOLE_TUNING = {
   raiseTime: 10.0,   // s to raise the USA flag
   flagTopY: 10.35,   // flag top hangs just under the gold finial (local)
   minBottomY: 0.25,  // flag bottom must stay above this height above the ground
-  groundOffset: 0.0, // pole base is at terrain; flag slides along it
+  segX: 28,          // cloth segments along width (hoist -> fly)
+  segY: 14,          // cloth segments along height
+  yawDamp: 2.5,      // exp damp rate (1/s) for wind-following rotation
 };
 
 export async function loadFlagpoleModel() {
@@ -48,7 +56,6 @@ export class Flagpole {
       this.textures[k].anisotropy = 4;
     }
 
-    // Flag: plane with pivot at top-center, so we can slide it down the pole.
     this.makeFlag('enemy');
 
     // Current state
@@ -60,10 +67,10 @@ export class Flagpole {
     this.anchor = new THREE.Group();
     this.anchor.position.set(0, FLAGPOLE_TUNING.flagTopY, 0);
     this.group.add(this.anchor);
-    // Re-parent the flag plane under the anchor
+    // Re-parent the flag under the anchor
     this.anchor.add(this._flagMesh);
-    this._flagMesh.position.set(0, 0, 0); // local: already top-center pivot
-    this._flagMesh.rotation.y = 0;
+    this._flagMesh.position.set(0, 0, 0); // local: hoist edge at pole, top edge at 0
+    this._flagMesh.rotation.set(0, 0, 0);
   }
 
   _flagHeight(kind) {
@@ -75,7 +82,7 @@ export class Flagpole {
     const h = this._flagHeight(kind);
     // PlaneGeometry(w, h) has pivot at center — translate so the hoist edge is
     // on the pole (x=0): the flag extends in +X with its top edge at y=0.
-    const geo = new THREE.PlaneGeometry(w, h, 16, 8);
+    const geo = new THREE.PlaneGeometry(w, h, FLAGPOLE_TUNING.segX, FLAGPOLE_TUNING.segY);
     geo.translate(w / 2, -h / 2, 0);
     return geo;
   }
@@ -103,6 +110,16 @@ export class Flagpole {
     mesh.receiveShadow = false;
     mesh.frustumCulled = false;
     mesh.name = 'Flag_' + kind;
+    // Snapshot base 2D positions for the cloth solver
+    const geo = mesh.geometry;
+    const pos = geo.attributes.position;
+    this._baseX = new Float32Array(pos.count);
+    this._baseY = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) {
+      this._baseX[i] = pos.getX(i);
+      this._baseY[i] = pos.getY(i);
+    }
+    this._flagWidth = FLAGPOLE_TUNING.width;
     if (this.anchor) {
       this.anchor.add(mesh);
       mesh.position.set(0, 0, 0);
@@ -119,14 +136,47 @@ export class Flagpole {
 
   // Slide the flag down the pole (or back up) for the current animation phase.
   // t in [0,1]: 0 = fully raised (top), 1 = lowered to the ground.
-  // Local Y of the anchor (top of pole) is fixed; instead we drive the flag
-  // plane's own y offset so it slides from top (0) to bottom of pole (-move).
   _setProgress(t) {
     // t in [0,1]: 0 = fully raised (flag top at pole top), 1 = lowered to the ground.
-    // groundBottomY is the flag bottom's lowest reachable local height (~0.25 m).
     const h = this.flagHeight;
     const maxSlide = FLAGPOLE_TUNING.flagTopY - FLAGPOLE_TUNING.minBottomY - h;
     this._flagMesh.position.y = -maxSlide * t;
+  }
+
+  // One frame of cloth animation + wind-following yaw. Runs every frame, even
+  // when the lowering/raising state machine is paused or the match is done.
+  tickCloth(dt) {
+    this._animateCloth(performance.now() / 1000);
+    // Follow the wind: rotate the anchor (and thus the flag) so the flag's
+    // +X axis tracks the wind direction in world space. Short-range lerp is
+    // safe here: the wind direction oscillates well within ±0.35 rad.
+    const instanceYaw = this.group.rotation.y || 0;
+    const target = wind.dir() - instanceYaw;
+    this.anchor.rotation.y += (target - this.anchor.rotation.y) * Math.min(1, dt * FLAGPOLE_TUNING.yawDamp);
+  }
+
+  _animateCloth(time) {
+    const mesh = this._flagMesh;
+    if (!mesh || !this._baseX) return;
+    const geo = mesh.geometry;
+    const pos = geo.attributes.position;
+    const w = this._flagWidth;
+    const speed = wind.speed();
+    const speedN = Math.min(1.6, speed / 7);
+    const amp = 0.14 + 0.32 * speedN;      // m at the fly edge
+    const phase = time * (2.6 + 1.5 * speedN);
+    const fly = speedN * 0.9;
+    for (let i = 0; i < pos.count; i++) {
+      const x = this._baseX[i], y = this._baseY[i];
+      const t = x / w;                      // 0 = hoist, 1 = fly
+      const tq = Math.pow(t, 1.6);           // cloth amplitude grows toward the fly
+      const z = amp * tq * (Math.sin(phase - x * 2.4 - y * 1.3) + 0.55 * Math.sin(phase * 1.85 - x * 5.1 + y * 0.8 + 1.1));
+      const dy = 0.10 * fly * tq * Math.sin(phase * 0.58 - x * 1.7 + 0.6);
+      pos.setZ(i, z);
+      pos.setY(i, y + dy);
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
   }
 
   reset() {
